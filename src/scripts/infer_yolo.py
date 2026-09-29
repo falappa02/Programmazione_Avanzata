@@ -1,5 +1,9 @@
 import sys
 import os
+
+os.environ["YOLO_CONFIG_DIR"] = "/tmp/Ultralytics"
+os.environ["YOLO_VERBOSE"] = "False"
+
 import json
 import argparse
 

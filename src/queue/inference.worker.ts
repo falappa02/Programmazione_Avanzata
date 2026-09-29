@@ -61,6 +61,12 @@ inferenceQueue.process(async (job) => {
             return reject(new Error(stderr || error.message));
           }
           try {
+            const jsonStart = stdout.indexOf('{');
+            const jsonEnd = stdout.lastIndexOf('}');
+            if (jsonStart !== -1 && jsonEnd !== -1) {
+              const jsonStr = stdout.substring(jsonStart, jsonEnd + 1);
+              return resolve(JSON.parse(jsonStr));
+            }
             const parsed = JSON.parse(stdout.trim());
             resolve(parsed);
           } catch (parseErr) {
