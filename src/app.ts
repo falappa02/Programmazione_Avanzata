@@ -11,6 +11,18 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Root Welcome Endpoint
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Benvenuto nelle API Backend di Inferenza YOLOv11n (Programmazione Avanzata - UnivPM)',
+    version: '1.0.0',
+    documentation: 'Vedi README.md per l\'elenco completo delle rotte API.',
+    healthCheck: '/health',
+    apiPrefix: '/api/v1',
+  });
+});
+
 // Health Check Endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'YOLO Inference API Backend Server is healthy.' });
