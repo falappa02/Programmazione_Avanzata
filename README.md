@@ -18,7 +18,7 @@ L'obiettivo del sistema è fornire una piattaforma REST in grado di:
    - **Costo Inferenza Video**: `1.75 token / frame`.
    - Controllo preventivo del saldo token: abort immediato dell'operazione (`ABORTED`) se il saldo è insufficiente.
 4. **Monitorare Avanzamento e Risultati**: Tracciamento delle fasi (`PENDING`, `RUNNING`, `FAILED`, `ABORTED`, `COMPLETED`) e restituzione dei dettagli in formato JSON.
-5. **Visualizzazione Frame Split**: Generazione dinamica di un'immagine composta divisa a metà (sinistra: frame originale, destra: frame con Bounding Box e etichette classi).
+5. **Visualizzazione Frame Split**: Generazione dinamica di behthrthr'immagine composta divisa a metà (sinistra: frame originale, destra: frame con Bounding Box e etichette classi).
 6. **Autenticazione & Gestione Crediti**: Sicurezza basata su token **JWT RS256** (chiave privata/pubblica RSA) e rotta amministrativa per la ricarica dei token utente via email.
 
 ---
