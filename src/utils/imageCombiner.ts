@@ -23,8 +23,8 @@ export async function createSideBySideFrameImage(
   }
 
   const originalMeta = await sharp(originalImagePath).metadata();
-  const width = originalMeta.width || 640;
-  const height = originalMeta.height || 480;
+  const width = Math.max(originalMeta.width || 640, 640);
+  const height = Math.max(originalMeta.height || 480, 480);
 
   // Prepare left image buffer
   const leftBuffer = await sharp(originalImagePath).resize(width, height).toBuffer();
