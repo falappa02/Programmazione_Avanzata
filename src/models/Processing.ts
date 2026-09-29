@@ -19,18 +19,18 @@ export interface ProcessingAttributes {
 }
 
 export class Processing extends Model<ProcessingAttributes> implements ProcessingAttributes {
-  public id!: string;
-  public datasetId!: string;
-  public userId!: string;
-  public modelId!: string;
-  public status!: ProcessingStatus;
-  public totalCost!: number;
-  public errorType!: string | null;
-  public errorDetails!: string | null;
-  public resultJson!: any;
-  public outputFolderPath!: string | null;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare id: string;
+  declare datasetId: string;
+  declare userId: string;
+  declare modelId: string;
+  declare status: ProcessingStatus;
+  declare totalCost: number;
+  declare errorType: string | null;
+  declare errorDetails: string | null;
+  declare resultJson: any;
+  declare outputFolderPath: string | null;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 }
 
 Processing.init(

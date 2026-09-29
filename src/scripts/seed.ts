@@ -57,31 +57,37 @@ async function seed() {
   if (!fs.existsSync(sampleImagePath2)) fs.writeFileSync(sampleImagePath2, dummyPixel);
   if (!fs.existsSync(sampleImagePath3)) fs.writeFileSync(sampleImagePath3, dummyPixel);
 
+  const user1Id = user1.id || (user1 as any).getDataValue?.('id');
+
   // 2. Create 3 Sample Datasets (Requirement: At least 3 datasets for demo)
   const ds1 = await Dataset.create({
-    userId: user1.id,
+    userId: user1Id,
     name: 'Traffic Monitoring Dataset',
     tags: ['vehicles', 'traffic', 'urban', 'yolo'],
     isDeleted: false,
   });
 
   const ds2 = await Dataset.create({
-    userId: user1.id,
+    userId: user1Id,
     name: 'Pedestrian Surveillance Dataset',
     tags: ['people', 'security', 'cctv'],
     isDeleted: false,
   });
 
   const ds3 = await Dataset.create({
-    userId: user1.id,
+    userId: user1Id,
     name: 'Wildlife Detection Dataset',
     tags: ['animals', 'nature', 'outdoor'],
     isDeleted: false,
   });
 
+  const ds1Id = ds1.id || (ds1 as any).getDataValue?.('id');
+  const ds2Id = ds2.id || (ds2 as any).getDataValue?.('id');
+  const ds3Id = ds3.id || (ds3 as any).getDataValue?.('id');
+
   // 3. Populate Sample Contents
   await Content.create({
-    datasetId: ds1.id,
+    datasetId: ds1Id,
     type: 'image',
     filePath: sampleImagePath1,
     originalName: 'city_traffic_intersection.jpg',
@@ -91,7 +97,7 @@ async function seed() {
   });
 
   await Content.create({
-    datasetId: ds2.id,
+    datasetId: ds2Id,
     type: 'image',
     filePath: sampleImagePath2,
     originalName: 'street_crossing.jpg',
@@ -101,7 +107,7 @@ async function seed() {
   });
 
   await Content.create({
-    datasetId: ds3.id,
+    datasetId: ds3Id,
     type: 'image',
     filePath: sampleImagePath3,
     originalName: 'forest_wildlife.jpg',

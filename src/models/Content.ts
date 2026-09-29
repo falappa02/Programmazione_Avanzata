@@ -15,16 +15,16 @@ export interface ContentAttributes {
 }
 
 export class Content extends Model<ContentAttributes> implements ContentAttributes {
-  public id!: string;
-  public datasetId!: string;
-  public type!: 'image' | 'video';
-  public filePath!: string;
-  public originalName!: string;
-  public fileSizeKb!: number;
-  public frameCount!: number;
-  public tokenCost!: number;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare id: string;
+  declare datasetId: string;
+  declare type: 'image' | 'video';
+  declare filePath: string;
+  declare originalName: string;
+  declare fileSizeKb: number;
+  declare frameCount: number;
+  declare tokenCost: number;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 }
 
 Content.init(

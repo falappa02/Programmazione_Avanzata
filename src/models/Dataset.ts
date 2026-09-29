@@ -12,13 +12,13 @@ export interface DatasetAttributes {
 }
 
 export class Dataset extends Model<DatasetAttributes> implements DatasetAttributes {
-  public id!: string;
-  public userId!: string;
-  public name!: string;
-  public tags!: string[];
-  public isDeleted!: boolean;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare id: string;
+  declare userId: string;
+  declare name: string;
+  declare tags: string[];
+  declare isDeleted: boolean;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 }
 
 Dataset.init(
