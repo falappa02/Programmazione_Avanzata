@@ -12,13 +12,13 @@ export interface UserAttributes {
 }
 
 export class User extends Model<UserAttributes> implements UserAttributes {
-  public id!: string;
-  public email!: string;
-  public password!: string;
-  public role!: 'admin' | 'user';
-  public tokens!: number;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare public id: string;
+  declare public email: string;
+  declare public password: string;
+  declare public role: 'admin' | 'user';
+  declare public tokens: number;
+  declare public readonly createdAt: Date;
+  declare public readonly updatedAt: Date;
 }
 
 User.init(
