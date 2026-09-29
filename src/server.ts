@@ -4,15 +4,29 @@ import { sequelize } from './config/database';
 import { getRsaKeys } from './config/keys';
 import './queue/inference.worker'; // Import worker listener
 
+async function connectWithRetry(maxRetries = 10, delayMs = 3000) {
+  for (let i = 1; i <= maxRetries; i++) {
+    try {
+      console.log(`[DATABASE] Connecting and syncing database models (Attempt ${i}/${maxRetries})...`);
+      await sequelize.authenticate();
+      await sequelize.sync({ alter: true });
+      console.log('[DATABASE] Database synchronized successfully.');
+      return;
+    } catch (err: any) {
+      console.warn(`[DATABASE WARNING] Connection attempt ${i} failed (${err.message}). Retrying in ${delayMs / 1000}s...`);
+      if (i === maxRetries) throw err;
+      await new Promise((res) => setTimeout(res, delayMs));
+    }
+  }
+}
+
 async function bootstrap() {
   try {
     // 1. Ensure RSA Keypair exists for JWT RS256
     getRsaKeys();
 
-    // 2. Sync Database Schema
-    console.log('[DATABASE] Connecting and syncing database models...');
-    await sequelize.sync({ alter: true });
-    console.log('[DATABASE] Database synchronized successfully.');
+    // 2. Sync Database Schema with retries for container readiness
+    await connectWithRetry();
 
     // 3. Start Express HTTP Server
     const server = app.listen(config.port, () => {
