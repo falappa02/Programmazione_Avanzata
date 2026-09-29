@@ -1,0 +1,12 @@
+node_modules
+dist
+uploads/*
+!uploads/.gitkeep
+outputs/*
+!outputs/.gitkeep
+*.sqlite
+.env
+keys/*.pem
+!keys/.gitkeep
+coverage
+.DS_Store
