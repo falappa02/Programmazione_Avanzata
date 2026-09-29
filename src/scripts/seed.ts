@@ -1,0 +1,121 @@
+import bcrypt from 'bcryptjs';
+import path from 'path';
+import fs from 'fs';
+import { sequelize } from '../config/database';
+import { User, Dataset, Content } from '../models';
+
+async function seed() {
+  console.log('[SEED] Initializing Database Seed...');
+  await sequelize.sync({ force: true });
+
+  const hashedAdminPassword = await bcrypt.hash('Admin123!', 10);
+  const hashedUserPassword = await bcrypt.hash('User123!', 10);
+
+  // 1. Create Default Users
+  const admin = await User.create({
+    email: 'admin@univpm.it',
+    password: hashedAdminPassword,
+    role: 'admin',
+    tokens: 2000.0,
+  });
+
+  const user1 = await User.create({
+    email: 'user1@univpm.it',
+    password: hashedUserPassword,
+    role: 'user',
+    tokens: 500.0,
+  });
+
+  const user2 = await User.create({
+    email: 'user2@univpm.it',
+    password: hashedUserPassword,
+    role: 'user',
+    tokens: 25.0,
+  });
+
+  console.log('[SEED] Users created successfully:');
+  console.log(` - Admin: admin@univpm.it (Password: Admin123!)`);
+  console.log(` - User 1: user1@univpm.it (Password: User123!, Tokens: 500)`);
+  console.log(` - User 2: user2@univpm.it (Password: User123!, Tokens: 25)`);
+
+  // Ensure uploads directory exists and contains sample dummy images
+  const uploadsDir = path.resolve(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
+  const sampleImagePath1 = path.join(uploadsDir, 'sample_traffic.jpg');
+  const sampleImagePath2 = path.join(uploadsDir, 'sample_pedestrian.jpg');
+  const sampleImagePath3 = path.join(uploadsDir, 'sample_wildlife.jpg');
+
+  // Create dummy image files if missing
+  const dummyPixel = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64'
+  );
+  if (!fs.existsSync(sampleImagePath1)) fs.writeFileSync(sampleImagePath1, dummyPixel);
+  if (!fs.existsSync(sampleImagePath2)) fs.writeFileSync(sampleImagePath2, dummyPixel);
+  if (!fs.existsSync(sampleImagePath3)) fs.writeFileSync(sampleImagePath3, dummyPixel);
+
+  // 2. Create 3 Sample Datasets (Requirement: At least 3 datasets for demo)
+  const ds1 = await Dataset.create({
+    userId: user1.id,
+    name: 'Traffic Monitoring Dataset',
+    tags: ['vehicles', 'traffic', 'urban', 'yolo'],
+    isDeleted: false,
+  });
+
+  const ds2 = await Dataset.create({
+    userId: user1.id,
+    name: 'Pedestrian Surveillance Dataset',
+    tags: ['people', 'security', 'cctv'],
+    isDeleted: false,
+  });
+
+  const ds3 = await Dataset.create({
+    userId: user1.id,
+    name: 'Wildlife Detection Dataset',
+    tags: ['animals', 'nature', 'outdoor'],
+    isDeleted: false,
+  });
+
+  // 3. Populate Sample Contents
+  await Content.create({
+    datasetId: ds1.id,
+    type: 'image',
+    filePath: sampleImagePath1,
+    originalName: 'city_traffic_intersection.jpg',
+    fileSizeKb: 245.5,
+    frameCount: 1,
+    tokenCost: 0.25,
+  });
+
+  await Content.create({
+    datasetId: ds2.id,
+    type: 'image',
+    filePath: sampleImagePath2,
+    originalName: 'street_crossing.jpg',
+    fileSizeKb: 180.2,
+    frameCount: 1,
+    tokenCost: 0.25,
+  });
+
+  await Content.create({
+    datasetId: ds3.id,
+    type: 'image',
+    filePath: sampleImagePath3,
+    originalName: 'forest_wildlife.jpg',
+    fileSizeKb: 310.0,
+    frameCount: 1,
+    tokenCost: 0.25,
+  });
+
+  console.log('[SEED] Created 3 Datasets and sample content items successfully.');
+  console.log('[SEED] Database seeding complete!');
+  process.exit(0);
+}
+
+seed().catch((err) => {
+  console.error('[SEED ERROR]', err);
+  process.exit(1);
+});

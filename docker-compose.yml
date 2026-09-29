@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: yolo_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: yolo_db
+      POSTGRES_USER: yolo_user
+      POSTGRES_PASSWORD: yolo_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - yolo_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: yolo_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - yolo_network
+
+  app:
+    build: .
+    container_name: yolo_backend_app
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      DB_DIALECT: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: yolo_db
+      DB_USER: yolo_user
+      DB_PASSWORD: yolo_pass
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_ALGORITHM: RS256
+      JWT_PRIVATE_KEY_PATH: keys/jwt_private.pem
+      JWT_PUBLIC_KEY_PATH: keys/jwt_public.pem
+      PYTHON_PATH: python3
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+      - ./keys:/app/keys
+    networks:
+      - yolo_network
+
+volumes:
+  pgdata:
+
+networks:
+  yolo_network:
+    driver: bridge
