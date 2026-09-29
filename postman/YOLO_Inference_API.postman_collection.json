@@ -156,6 +156,81 @@
 							"path": ["api", "v1", "datasets"]
 						}
 					}
+				},
+				{
+					"name": "Upload Content (Image or Video)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "http://localhost:3000/api/v1/datasets/{{dataset_id}}/content",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["api", "v1", "datasets", "{{dataset_id}}", "content"]
+						}
+					}
+				},
+				{
+					"name": "Update Dataset",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Aggiornato Dataset Traffico\",\n  \"tags\": [\"updated\", \"traffic\"]\n}"
+						},
+						"url": {
+							"raw": "http://localhost:3000/api/v1/datasets/{{dataset_id}}",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["api", "v1", "datasets", "{{dataset_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Dataset (Soft Delete)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:3000/api/v1/datasets/{{dataset_id}}",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["api", "v1", "datasets", "{{dataset_id}}"]
+						}
+					}
 				}
 			]
 		},
