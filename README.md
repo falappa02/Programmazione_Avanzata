@@ -210,4 +210,4 @@ I test verificheranno:
 ## 👥 Crediti & Autori
 
 Sviluppato in coppia per l'esame di **Programmazione Avanzata** (UnivPM).
-- Repository GitHub Pubblico: `Programmazione_Avanzata`
+- Repository GitHub Pubblico: [falappa02/Programmazione_Avanzata](https://github.com/falappa02/Programmazione_Avanzata)
