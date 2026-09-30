@@ -1,7 +1,7 @@
 {
   "name": "programmazione_avanzata",
   "version": "1.0.0",
-  "description": "REST API in TypeScript/Express per la gestione dell'inferenza YOLOv11n con Sequelize (PostgreSQL/SQLite), Bull (Redis) e JWT RS256",
+  "description": "REST API in TypeScript/Express per la gestione dell'inferenza YOLOv11n con Sequelize (PostgreSQL), Bull (Redis) e JWT RS256",
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc",

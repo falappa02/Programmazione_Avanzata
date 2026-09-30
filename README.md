@@ -18,8 +18,81 @@ L'obiettivo del sistema è fornire una piattaforma REST in grado di:
    - **Costo Inferenza Video**: `1.75 token / frame`.
    - Controllo preventivo del saldo token: abort immediato dell'operazione (`ABORTED`) se il saldo è insufficiente.
 4. **Monitorare Avanzamento e Risultati**: Tracciamento delle fasi (`PENDING`, `RUNNING`, `FAILED`, `ABORTED`, `COMPLETED`) e restituzione dei dettagli in formato JSON.
-5. **Visualizzazione Frame Split**: Generazione dinamica di behthrthr'immagine composta divisa a metà (sinistra: frame originale, destra: frame con Bounding Box e etichette classi).
+5. **Visualizzazione Frame Split**: Generazione dinamica dell'immagine composta divisa a metà (sinistra: frame originale, destra: frame con Bounding Box e etichette classi).
 6. **Autenticazione & Gestione Crediti**: Sicurezza basata su token **JWT RS256** (chiave privata/pubblica RSA) e rotta amministrativa per la ricarica dei token utente via email.
+
+---
+
+## 📊 Stato del Progetto rispetto alla Consegna
+
+Di seguito è riportato il resoconto dettagliato sullo stato di avanzamento del progetto rispetto ai requisiti e alle specifiche stabilite per la consegna dell'esame di **Programmazione Avanzata**.
+
+### 🟢 Lavoro Completato (`[x]`)
+
+- [x] **Autenticazione & Gestione Credenziali**:
+  - Registrazione e Login utenti con memorizzazione sicura della password tramite hashing `bcryptjs`.
+  - Autenticazione basata su token **JWT** firmati con algoritmo **RS256** (coppia di chiavi asimmetriche RSA pubblica/privata).
+  - Middleware di controllo ruoli (Utente Standard `USER` vs Amministratore `ADMIN`).
+- [x] **Gestione Credito Utente (Sistema di Token)**:
+  - Gestione del saldo crediti in token per ciascun utente.
+  - Endpoint utente per la verifica del saldo token residuo (`GET /api/v1/users/credit`).
+  - Endpoint amministrativo per la ricarica dei token utente specificando l'email (`POST /api/v1/admin/recharge`).
+- [x] **Gestione Dataset (CRUD & Soft Delete)**:
+  - Creazione dataset con nome, tag ed associazione all'utente proprietario.
+  - Listing dei dataset attivi dell'utente autenticato.
+  - Modifica dataset con controllo preventivo sulla sovrapposizione/duplicazione del nome.
+  - Cancellazione logica dei dataset (`soft delete` tramite Sequelize `paranoid` / campo `deletedAt`).
+- [x] **Caricamento Contenuti (Immagini & Video MP4)**:
+  - Caricamento file multimediali (Immagini JPG/PNG e Video MP4) legati ad un dataset.
+  - Calcolo del costo in token dinamico basato su **Strategy Pattern** (`CostStrategyFactory`):
+    - **Immagini**: `0.25 token / file`.
+    - **Video MP4**: `0.08 token / KB`.
+  - Deduzione immediata dei token dal saldo dell'utente.
+- [x] **Inferenza ML Asincrona (YOLOv11n)**:
+  - Avvio del processo di inferenza tramite `POST /api/v1/inference`.
+  - Controllo preventivo del saldo token per l'inferenza:
+    - **Immagini**: `4.0 token / immagine`.
+    - **Video MP4**: `1.75 token / frame`.
+    - Abort immediato del job (`ABORTED`) e risposta `400 Bad Request` in caso di credito insufficiente.
+  - Architettura asincrona a code tramite **Bull Queue** disaccoppiata con **Redis**.
+  - Integrazione dello script Python (`infer_yolo.py`) basato su libreria `ultralytics` YOLOv11n.
+  - Tracciamento dello stato di avanzamento (`PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `ABORTED`) ed endpoint per la consultazione dei risultati JSON (`GET /api/v1/inference/:id/status`).
+- [x] **Visualizzazione Frame Split**:
+  - Elaborazione dinamica con `sharp` dell'immagine composta affiancata (sinistra: frame originale, destra: frame con Bounding Box ed etichette).
+  - Endpoint REST dedicato per il recupero delle immagini split (`GET /api/v1/inference/:id/frame/:frameIndex`).
+- [x] **Design Pattern Formalizzati**:
+  - **Singleton**: Connessione Database e gestione/caricamento chiavi RSA.
+  - **Strategy & Factory**: Calcolo dinamico del costo di upload e di inferenza per tipo di media.
+  - **Repository / Service Layer**: Separazione netta tra Controller, Service e Model.
+  - **Chain of Responsibility**: Pipeline di middleware Express per auth, ruoli, validazione ed errori.
+  - **Producer-Consumer**: Gestione disaccoppiata della coda Bull su Redis.
+- [x] **Containerizzazione & Scripting**:
+  - Orchestrazione multi-container con `docker-compose.yml` (App Backend Node/Python, DB PostgreSQL, Coda Redis).
+  - Gestione dei retry di connessione al database durante la fase di avvio del container (`docker-compose`).
+  - Script di seeding (`npm run seed`) per inizializzare il DB con dati di prova pronti all'uso.
+- [x] **Documentazione & Postman**:
+  - Diagrammi di architettura in formato Mermaid (Diagramma dei Casi d'Uso e Diagramma di Sequenza).
+  - Collezione Postman completa inclusa in `postman/YOLO_Inference_API.postman_collection.json`.
+- [x] **Testing Unitario Iniziale**:
+  - Test unitari con **Jest** per la validazione dei middleware (`authMiddleware`, `errorHandlerMiddleware`).
+
+---
+
+### 🟡 Lavoro da Fare / Attività Residue (`[ ]`)
+
+- [ ] **Ampliamento Copertura dei Test (Unit & Integration)**:
+  - Scrittura di unit test per i Servizi di Business Logic (`AuthService`, `DatasetService`, `ContentService`, `InferenceService`) e per le strategie di costo (`CostStrategy`).
+  - Implementazione di test di integrazione/E2E con `supertest` per verificare l'intero ciclo di vita dell'API (Auth, Dataset CRUD, Upload, Inferenza e Credito).
+- [ ] **Documentazione Interattiva OpenAPI / Swagger UI**:
+  - Integrazione delle librerie `swagger-ui-express` e `swagger-jsdoc` per offrire un'interfaccia UI Swagger su `/api-docs` per il collaudo interattivo degli endpoint REST.
+- [ ] **Paginazione & Filtraggio Avanzato**:
+  - Aggiunta di parametri di paginazione (`page`, `limit`) e filtri di ricerca (per tag, data o stato del processing) sulle rotte GET di listing dei dataset e dell'inferenza.
+- [ ] **Gestione Cleanup & Conservazione dei File**:
+  - Sviluppo di una procedura di pulizia automatica (o job di manutenzione) per eliminare i file locali non più referenziati nelle cartelle `uploads/` e `outputs/` in seguito ad un'eliminazione definitiva (`hard delete`).
+- [ ] **Pipeline CI/CD (GitHub Actions)**:
+  - Definizione del file di workflow `.github/workflows/ci.yml` per l'esecuzione automatica di build TypeScript, linter e test Jest su ogni pull request/push.
+- [ ] **Configurazione Standard di Code Style (ESLint & Prettier)**:
+  - Integrazione dei file di configurazione `.eslintrc.js` e `.prettierrc` per standardizzare la formattazione del codice tra i membri del team.
 
 ---
 
@@ -124,11 +197,13 @@ Nel progetto sono stati implementati e documentati i seguenti Design Pattern:
 
 ---
 
-## 🐳 Guida all'Avvio con Docker Compose (Consigliata)
+## 🐳 Guida all'Avvio con Docker Compose
+
+L'applicazione è interamente containerizzata e progettata per essere eseguita con Docker e Docker Compose, garantendo la totale riproducibilità dell'ambiente di esecuzione e di tutte le dipendenze (PostgreSQL, Redis, Python 3 con librerie PyTorch e YOLOv11n).
 
 Assicurarsi che Docker e Docker Compose siano installati ed in esecuzione sul sistema.
 
-### 1. Avvio del Sistema
+### 1. Avvio dei Container
 Nella radice del progetto, eseguire:
 
 ```bash
@@ -136,31 +211,24 @@ docker-compose up --build
 ```
 
 Docker Compose avvierà 3 container coordinati:
-- **`yolo_postgres`**: Database PostgreSQL.
-- **`yolo_redis`**: Coda messaggi Redis per Bull.
+- **`yolo_postgres`**: Database PostgreSQL (porta esposta all'host: `5433`).
+- **`yolo_redis`**: Coda messaggi Redis per Bull (porta esposta all'host: `6379`).
 - **`yolo_backend_app`**: Backend Node.js/TypeScript con ambiente Python 3 ed `ultralytics` YOLOv11n pre-installati.
 
-L'API sarà disponibile all'indirizzo: `http://localhost:3000`.
+L'API REST sarà disponibile all'indirizzo: `http://localhost:3000`.
 
----
+### 2. Inizializzazione del Database (Seeding Dati Demo)
+Una volta avviati i container, aprire un altro terminale ed eseguire il popolamento del database eseguendo lo script di seed nel container `yolo_backend_app`:
 
-## 💻 Avvio in Ambiente Locale (Senza Docker)
+```bash
+docker-compose exec app npm run seed
+```
 
-1. **Installare le dipendenze Node.js**:
-   ```bash
-   npm install
-   ```
-
-2. **Inizializzare il Database con lo Script di Seed**:
-   ```bash
-   npm run seed
-   ```
-   Lo script popolerà il database (SQLite di default per ambiente locale) creando 3 utenti (Admin + 2 User) e **3 dataset dimostrativi** pronti all'uso.
-
-3. **Avviare il Server in Modalità Sviluppo**:
-   ```bash
-   npm run dev
-   ```
+Lo script popolerà il database PostgreSQL creando:
+- **Admin**: `admin@univpm.it` / `Admin123!` (2000.0 Token)
+- **User 1**: `user1@univpm.it` / `User123!` (500.0 Token)
+- **User 2**: `user2@univpm.it` / `User123!` (25.0 Token)
+- **3 Dataset dimostrativi** pronti all'uso con immagini campione per l'inferenza.
 
 ---
 
