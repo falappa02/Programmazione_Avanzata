@@ -238,6 +238,25 @@
 			"name": "Inference",
 			"item": [
 				{
+					"name": "Get Supported YOLO Models",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:3000/api/v1/inference/models",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["api", "v1", "inference", "models"]
+						}
+					}
+				},
+				{
 					"name": "Trigger Inference",
 					"request": {
 						"method": "POST",

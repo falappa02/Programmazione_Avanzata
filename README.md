@@ -48,14 +48,17 @@ Di seguito è riportato il resoconto dettagliato sullo stato di avanzamento del 
     - **Immagini**: `0.25 token / file`.
     - **Video MP4**: `0.08 token / KB`.
   - Deduzione immediata dei token dal saldo dell'utente.
-- [x] **Inferenza ML Asincrona (YOLOv11n)**:
+- [x] **Inferenza ML Asincrona Multi-Modello (YOLOv8 & YOLOv11 - nano, small, medium)**:
+  - Catalogo configurabile di modelli YOLO ammessi (`yolov8n`, `yolov8s`, `yolov8m`, `yolov11n`, `yolov11s`, `yolov11m`).
+  - Endpoint dedicato per consultare i modelli supportati e relativi metadati (`GET /api/v1/inference/models`).
+  - Validazione rigorosa tramite Zod del parametro `modelId` (default: `yolov11n`) con blocco immediato `400 Bad Request` in caso di modello non supportato.
   - Avvio del processo di inferenza tramite `POST /api/v1/inference`.
   - Controllo preventivo del saldo token per l'inferenza:
     - **Immagini**: `4.0 token / immagine`.
     - **Video MP4**: `1.75 token / frame`.
     - Abort immediato del job (`ABORTED`) e risposta `400 Bad Request` in caso di credito insufficiente.
   - Architettura asincrona a code tramite **Bull Queue** disaccoppiata con **Redis**.
-  - Integrazione dello script Python (`infer_yolo.py`) basato su libreria `ultralytics` YOLOv11n.
+  - Integrazione dello script Python (`infer_yolo.py`) basato su libreria `ultralytics` con caricamento dinamico del modello specificato.
   - Tracciamento dello stato di avanzamento (`PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `ABORTED`) ed endpoint per la consultazione dei risultati JSON (`GET /api/v1/inference/:id/status`).
 - [x] **Visualizzazione Frame Split**:
   - Elaborazione dinamica con `sharp` dell'immagine composta affiancata (sinistra: frame originale, destra: frame con Bounding Box ed etichette).
@@ -269,7 +272,8 @@ I test verificheranno:
 | `PUT` | `/api/v1/datasets/:id` | `[U]` | Modifica dataset (verifica sovrapposizione nome) |
 | `DELETE` | `/api/v1/datasets/:id` | `[U]` | Cancellazione logica (`soft delete`) |
 | `POST` | `/api/v1/datasets/:id/content` | `[U]` | Upload immagine (0.25 token) o video MP4 (0.08 token/KB) |
-| `POST` | `/api/v1/inference` | `[U]` | Avvio inferenza YOLOv11n (4.0 token/img, 1.75/frame) |
+| `GET` | `/api/v1/inference/models` | `[U]` | Lista modelli YOLO supportati (v8/v11, nano/small/medium) |
+| `POST` | `/api/v1/inference` | `[U]` | Avvio inferenza (modelId opzionale, default `yolov11n`) |
 | `GET` | `/api/v1/inference/:id/status` | `[U]` | Stato avanzamento e JSON dettagli se `COMPLETED` |
 | `GET` | `/api/v1/inference/:id/frame/:frameIndex` | `[U]` | Immagine split (sinistra: originale, destra: BBox & classi) |
 

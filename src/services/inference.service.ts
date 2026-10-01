@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { Processing, Dataset, Content, User } from '../models';
 import { CostStrategyFactory } from '../strategies/cost.strategy';
 import { inferenceQueue } from '../queue/inference.queue';
@@ -5,14 +7,37 @@ import { createSideBySideFrameImage } from '../utils/imageCombiner';
 import { NotFoundError } from '../errors/NotFoundError';
 import { InsufficientCreditError } from '../errors/InsufficientCreditError';
 import { BadRequestError } from '../errors/BadRequestError';
+import {
+  DEFAULT_MODEL_ID,
+  SUPPORTED_MODEL_IDS,
+  getAllSupportedModels,
+  isValidModelId,
+} from '../config/models';
 
 export class InferenceService {
+  /**
+   * Get list of supported YOLO models and configuration metadata.
+   */
+  public getAvailableModels() {
+    return {
+      defaultModel: DEFAULT_MODEL_ID,
+      totalModels: SUPPORTED_MODEL_IDS.length,
+      supportedModels: getAllSupportedModels(),
+    };
+  }
+
   /**
    * Trigger ML Inference on a specific dataset.
    * Calculates total required tokens (4 tokens/image, 1.75 tokens/frame video).
    * Verifies credit priori. Aborts priori if credit is insufficient.
    */
-  public async triggerInference(userId: string, datasetId: string, modelId: string = 'yolov11n') {
+  public async triggerInference(userId: string, datasetId: string, modelId: string = DEFAULT_MODEL_ID) {
+    if (!isValidModelId(modelId)) {
+      throw new BadRequestError(
+        `Modello '${modelId}' non supportato. Modelli YOLO ammessi: ${SUPPORTED_MODEL_IDS.join(', ')}`
+      );
+    }
+
     const dataset = await Dataset.findOne({
       where: { id: datasetId, userId, isDeleted: false },
       include: [{ model: Content, as: 'contents' }],
@@ -165,6 +190,17 @@ export class InferenceService {
     const originalPath = frameData.originalPath;
     const annotatedPath = frameData.annotatedPath;
     const objects = frameData.objects || [];
+
+    if (!originalPath || !fs.existsSync(originalPath)) {
+      throw new NotFoundError(`Immagine originale del frame non trovata sul disco: ${originalPath}`);
+    }
+
+    const ext = path.extname(originalPath).toLowerCase();
+    if (['.mp4', '.avi', '.mov', '.mkv'].includes(ext)) {
+      throw new BadRequestError(
+        `Il percorso registrato punta direttamente al file video (${ext}) anziché ad un fotogramma immagine estratto. Riavviare l'inferenza sul dataset per estrarre i singoli frame JPEG.`
+      );
+    }
 
     const imageBuffer = await createSideBySideFrameImage(originalPath, annotatedPath, objects);
     return imageBuffer;

@@ -2,6 +2,18 @@ import { Request, Response, NextFunction } from 'express';
 import { inferenceService } from '../services/inference.service';
 
 export class InferenceController {
+  public async getAvailableModels(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const data = inferenceService.getAvailableModels();
+      res.status(200).json({
+        success: true,
+        data,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   public async trigger(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.id;

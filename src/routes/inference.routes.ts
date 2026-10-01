@@ -3,15 +3,28 @@ import { inferenceController } from '../controllers/inference.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
 import { validate } from '../middlewares/validation.middleware';
 import { z } from 'zod';
+import { DEFAULT_MODEL_ID, SUPPORTED_MODEL_IDS } from '../config/models';
 
 const router = Router();
 
 const triggerInferenceSchema = z.object({
   body: z.object({
     datasetId: z.string().uuid('ID dataset non valido'),
-    modelId: z.string().optional().default('yolov11n'),
+    modelId: z
+      .enum(SUPPORTED_MODEL_IDS as unknown as [string, ...string[]], {
+        errorMap: () => ({
+          message: `Modello non supportato. Modelli YOLO ammessi: ${SUPPORTED_MODEL_IDS.join(', ')}`,
+        }),
+      })
+      .optional()
+      .default(DEFAULT_MODEL_ID),
   }),
 });
+
+// Get List of Supported YOLO Models (consultabile anche prima dell'auth)
+router.get('/models', (req, res, next) =>
+  inferenceController.getAvailableModels(req, res, next)
+);
 
 router.use(authMiddleware);
 

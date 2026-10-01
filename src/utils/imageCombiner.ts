@@ -22,7 +22,12 @@ export async function createSideBySideFrameImage(
     throw new Error(`Immagine originale non trovata: ${originalImagePath}`);
   }
 
-  const originalMeta = await sharp(originalImagePath).metadata();
+  let originalMeta;
+  try {
+    originalMeta = await sharp(originalImagePath).metadata();
+  } catch (err: any) {
+    throw new Error(`Impossibile decodificare l'immagine con Sharp (${originalImagePath}): ${err.message}`);
+  }
   const width = Math.max(originalMeta.width || 640, 640);
   const height = Math.max(originalMeta.height || 480, 480);
 
