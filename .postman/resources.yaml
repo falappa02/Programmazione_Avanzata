@@ -6,7 +6,7 @@ workspace:
 
 cloudResources:
   collections:
-    ../postman/collections/YOLOv11n Inference API - Programmazione Avanzata: 411a68d7-18a9-4c0b-8e11-cace04155412
+    ../postman/collections/YOLOv11n Inference API - Programmazione Avanzata: be5f355e-d259-4a20-bc3c-2ecf2a1d1c2f
 
 # All resources in the `postman/` folder are automatically registered in Local View.
 # Point to additional files outside the `postman/` folder to register them individually. Example:
