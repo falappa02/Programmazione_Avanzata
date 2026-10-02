@@ -8,12 +8,19 @@ import {
 } from '../../src/config/models';
 import { inferenceService } from '../../src/services/inference.service';
 import { BadRequestError } from '../../src/errors/BadRequestError';
-import { inferenceQueue } from '../../src/queue/inference.queue';
+import { NotFoundError } from '../../src/errors/NotFoundError';
+import { Processing } from '../../src/models';
+import * as imageCombiner from '../../src/utils/imageCombiner';
+import fs from 'fs';
+
+jest.mock('../../src/queue/inference.queue', () => ({
+  inferenceQueue: {
+    add: jest.fn(),
+    close: jest.fn().mockResolvedValue(undefined),
+  },
+}));
 
 describe('YOLO Models Configuration & Inference Service', () => {
-  afterAll(async () => {
-    await inferenceQueue.close();
-  });
   describe('YOLO Models Catalog', () => {
     it('dovrebbe includere combinazioni di versioni v8 e v11 e taglie nano, small, medium', () => {
       const models = getAllSupportedModels();
@@ -75,4 +82,113 @@ describe('YOLO Models Configuration & Inference Service', () => {
       ).rejects.toThrow(BadRequestError);
     });
   });
+
+  describe('InferenceService: getFrameVisualization multi-content & frame search', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('dovrebbe sollevare NotFoundError se il processamento non esiste', async () => {
+      jest.spyOn(Processing, 'findOne').mockResolvedValue(null as any);
+
+      await expect(
+        inferenceService.getFrameVisualization('user-1', 'proc-missing', 0)
+      ).rejects.toThrow(NotFoundError);
+    });
+
+    it('dovrebbe sollevare BadRequestError se il processamento non è COMPLETED', async () => {
+      jest.spyOn(Processing, 'findOne').mockResolvedValue({
+        id: 'proc-running',
+        userId: 'user-1',
+        status: 'RUNNING',
+      } as any);
+
+      await expect(
+        inferenceService.getFrameVisualization('user-1', 'proc-running', 0)
+      ).rejects.toThrow(BadRequestError);
+    });
+
+    it('dovrebbe trovare frameIndex specifico anche in contenuti successivi (es. video dopo immagine)', async () => {
+      const mockResultJson = {
+        detections: [
+          {
+            contentId: 'img-1',
+            type: 'image',
+            frames: [
+              {
+                frameIndex: 0,
+                originalPath: '/mock/img0.jpg',
+                annotatedPath: '/mock/ann0.jpg',
+                objects: [],
+              },
+            ],
+          },
+          {
+            contentId: 'vid-1',
+            type: 'video',
+            frames: [
+              {
+                frameIndex: 0,
+                originalPath: '/mock/vid0.jpg',
+                annotatedPath: '/mock/ann_vid0.jpg',
+                objects: [],
+              },
+              {
+                frameIndex: 5,
+                originalPath: '/mock/vid5.jpg',
+                annotatedPath: '/mock/ann_vid5.jpg',
+                objects: [{ classId: 0, className: 'person', confidence: 0.95, bbox: [10, 10, 50, 50] }],
+              },
+            ],
+          },
+        ],
+      };
+
+      jest.spyOn(Processing, 'findOne').mockResolvedValue({
+        id: 'proc-done',
+        userId: 'user-1',
+        status: 'COMPLETED',
+        resultJson: mockResultJson,
+      } as any);
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      const combinerSpy = jest
+        .spyOn(imageCombiner, 'createSideBySideFrameImage')
+        .mockResolvedValue(Buffer.from('fake-split-image'));
+
+      const result = await inferenceService.getFrameVisualization('user-1', 'proc-done', 5);
+      expect(result).toBeDefined();
+      expect(combinerSpy).toHaveBeenCalledWith(
+        '/mock/vid5.jpg',
+        '/mock/ann_vid5.jpg',
+        expect.arrayContaining([expect.objectContaining({ className: 'person' })])
+      );
+    });
+
+    it('dovrebbe sollevare NotFoundError se frameIndex non è presente in nessuna detection', async () => {
+      const mockResultJson = {
+        detections: [
+          {
+            contentId: 'img-1',
+            type: 'image',
+            frames: [
+              { frameIndex: 0, originalPath: '/mock/img0.jpg' },
+            ],
+          },
+        ],
+      };
+
+      jest.spyOn(Processing, 'findOne').mockResolvedValue({
+        id: 'proc-done',
+        userId: 'user-1',
+        status: 'COMPLETED',
+        resultJson: mockResultJson,
+      } as any);
+
+      await expect(
+        inferenceService.getFrameVisualization('user-1', 'proc-done', 99)
+      ).rejects.toThrow(NotFoundError);
+    });
+  });
 });
+

@@ -117,7 +117,8 @@ def process_video(file_path, content_id, output_dir, yolo_model, max_frames=30, 
         sys.stderr.write(f"[Python Worker] Video processing failed ({e}). Generating fallback frames.\n")
     
     if not frames_data:
-        frames_data.append(create_mock_frame(file_path, content_id, output_dir, 0))
+        for idx in range(3):
+            frames_data.append(create_mock_frame(file_path, content_id, output_dir, idx))
         
     return frames_data
 

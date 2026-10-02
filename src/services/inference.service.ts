@@ -179,9 +179,26 @@ export class InferenceService {
       throw new NotFoundError('Nessun risultato di rilevamento disponibile per questo processamento.');
     }
 
-    const firstDetection = result.detections[0];
-    const frames = firstDetection.frames || [];
-    const frameData = frames.find((f: any) => f.frameIndex === frameIndex) || frames[0];
+    // Search across all detections for a frame matching the requested frameIndex
+    let frameData: any = null;
+    for (const detection of result.detections) {
+      const frames = detection.frames || [];
+      const found = frames.find((f: any) => f.frameIndex === frameIndex);
+      if (found) {
+        frameData = found;
+        break;
+      }
+    }
+
+    // Fallback: if frameIndex is 0 and not found explicitly, take the first available frame from any detection
+    if (!frameData && frameIndex === 0) {
+      for (const detection of result.detections) {
+        if (detection.frames && detection.frames.length > 0) {
+          frameData = detection.frames[0];
+          break;
+        }
+      }
+    }
 
     if (!frameData) {
       throw new NotFoundError(`Frame index ${frameIndex} non trovato nei risultati.`);

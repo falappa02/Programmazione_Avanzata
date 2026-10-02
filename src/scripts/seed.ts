@@ -47,6 +47,7 @@ async function seed() {
   const sampleImagePath1 = path.join(uploadsDir, 'sample_traffic.jpg');
   const sampleImagePath2 = path.join(uploadsDir, 'sample_pedestrian.jpg');
   const sampleImagePath3 = path.join(uploadsDir, 'sample_wildlife.jpg');
+  const sampleVideoPath = path.join(uploadsDir, 'sample_surveillance.mp4');
 
   // Create dummy image files if missing
   const dummyPixel = Buffer.from(
@@ -56,6 +57,21 @@ async function seed() {
   if (!fs.existsSync(sampleImagePath1)) fs.writeFileSync(sampleImagePath1, dummyPixel);
   if (!fs.existsSync(sampleImagePath2)) fs.writeFileSync(sampleImagePath2, dummyPixel);
   if (!fs.existsSync(sampleImagePath3)) fs.writeFileSync(sampleImagePath3, dummyPixel);
+
+  // If a sample video does not exist, reuse an existing mp4 in uploads or generate a placeholder
+  if (!fs.existsSync(sampleVideoPath)) {
+    const existingMp4 = fs.readdirSync(uploadsDir).find((f) => f.endsWith('.mp4') && f !== 'sample_surveillance.mp4');
+    if (existingMp4) {
+      fs.copyFileSync(path.join(uploadsDir, existingMp4), sampleVideoPath);
+    } else {
+      fs.writeFileSync(sampleVideoPath, Buffer.from([0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x6d, 0x70, 0x34, 0x32]));
+    }
+  }
+
+  const videoStats = fs.existsSync(sampleVideoPath) ? fs.statSync(sampleVideoPath) : null;
+  const videoSizeKb = videoStats ? Math.round((videoStats.size / 1024) * 100) / 100 : 250.0;
+  const videoFrames = 10;
+  const videoUploadCost = Math.round(videoSizeKb * 0.08 * 100) / 100;
 
   const user1Id = user1.id || (user1 as any).getDataValue?.('id');
 
@@ -85,7 +101,7 @@ async function seed() {
   const ds2Id = ds2.id || (ds2 as any).getDataValue?.('id');
   const ds3Id = ds3.id || (ds3 as any).getDataValue?.('id');
 
-  // 3. Populate Sample Contents
+  // 3. Populate Sample Contents (Images and MP4 Video)
   await Content.create({
     datasetId: ds1Id,
     type: 'image',
@@ -107,6 +123,16 @@ async function seed() {
   });
 
   await Content.create({
+    datasetId: ds2Id,
+    type: 'video',
+    filePath: sampleVideoPath,
+    originalName: 'cctv_surveillance_pedestrians.mp4',
+    fileSizeKb: videoSizeKb,
+    frameCount: videoFrames,
+    tokenCost: videoUploadCost,
+  });
+
+  await Content.create({
     datasetId: ds3Id,
     type: 'image',
     filePath: sampleImagePath3,
@@ -116,7 +142,7 @@ async function seed() {
     tokenCost: 0.25,
   });
 
-  console.log('[SEED] Created 3 Datasets and sample content items successfully.');
+  console.log('[SEED] Created 3 Datasets and sample content items (including MP4 video) successfully.');
   console.log('[SEED] Database seeding complete!');
   process.exit(0);
 }
