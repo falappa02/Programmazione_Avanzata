@@ -161,7 +161,12 @@ export class InferenceService {
   /**
    * Generate split/side-by-side visualization frame (left original, right annotated with bboxes & classes).
    */
-  public async getFrameVisualization(userId: string, processingId: string, frameIndex: number = 0): Promise<Buffer> {
+  public async getFrameVisualization(
+    userId: string,
+    processingId: string,
+    frameIndex: number = 0,
+    contentId?: string
+  ): Promise<Buffer> {
     const processing = await Processing.findOne({
       where: { id: processingId, userId },
     });
@@ -179,29 +184,46 @@ export class InferenceService {
       throw new NotFoundError('Nessun risultato di rilevamento disponibile per questo processamento.');
     }
 
-    // Raccoglie tutti i frame/immagini di tutti i contenuti elaborati nel dataset
-    const allFrames: any[] = [];
-    for (const det of result.detections) {
-      for (const f of det.frames || []) {
-        allFrames.push({
-          ...f,
-          contentId: det.contentId,
-          originalName: det.originalName,
-        });
+    let frameData: any;
+
+    if (contentId) {
+      // 1. Cerca direttamente il contenuto specifico tramite il suo contentId
+      const targetDetection = result.detections.find((d: any) => d.contentId === contentId);
+      if (!targetDetection) {
+        throw new NotFoundError(`Nessun contenuto trovato con contentId '${contentId}' in questa inferenza.`);
       }
-    }
 
-    if (allFrames.length === 0) {
-      throw new NotFoundError('Nessun fotogramma o immagine disponibile nei risultati.');
-    }
+      const frames = targetDetection.frames || [];
+      if (frames.length === 0) {
+        throw new NotFoundError(`Nessun frame disponibile per il contenuto '${contentId}'.`);
+      }
 
-    if (frameIndex < 0 || frameIndex >= allFrames.length) {
-      throw new NotFoundError(
-        `Indice frame/immagine ${frameIndex} non trovato. Questo dataset contiene ${allFrames.length} frame/immagini elaborate (indici validi da 0 a ${allFrames.length - 1}).`
-      );
-    }
+      frameData = frames.find((f: any) => f.frameIndex === frameIndex) || frames[frameIndex] || frames[0];
+    } else {
+      // 2. Se non viene passato contentId, indicizza sequenzialmente tutte le immagini e i frame del dataset
+      const allFrames: any[] = [];
+      for (const det of result.detections) {
+        for (const f of det.frames || []) {
+          allFrames.push({
+            ...f,
+            contentId: det.contentId,
+            originalName: det.originalName,
+          });
+        }
+      }
 
-    const frameData = allFrames[frameIndex];
+      if (allFrames.length === 0) {
+        throw new NotFoundError('Nessun fotogramma o immagine disponibile nei risultati.');
+      }
+
+      if (frameIndex < 0 || frameIndex >= allFrames.length) {
+        throw new NotFoundError(
+          `Indice frame/immagine ${frameIndex} non trovato. Questo dataset contiene ${allFrames.length} frame/immagini elaborate (indici validi da 0 a ${allFrames.length - 1}).`
+        );
+      }
+
+      frameData = allFrames[frameIndex];
+    }
 
     const originalPath = frameData.originalPath;
     const annotatedPath = frameData.annotatedPath;

@@ -1,0 +1,15 @@
+# Use this workspace to collaborate
+workspace:
+  id: 3f8d7801-6f62-461d-8d96-7d6e170cfbff
+
+# Each entry here maps a local resource to one or more corresponding objects in Postman Cloud
+
+cloudResources:
+  collections:
+    ../postman/collections/YOLOv11n Inference API - Programmazione Avanzata: 76e02b53-bd9e-48ff-b7e3-ac88113943c1
+
+# All resources in the `postman/` folder are automatically registered in Local View.
+# Point to additional files outside the `postman/` folder to register them individually. Example:
+#localResources:
+#  collections:
+#    - ../tests/E2E Test Collection/

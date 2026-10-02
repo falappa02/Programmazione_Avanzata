@@ -1,0 +1,14 @@
+$kind: http-request
+url: http://localhost:3000/api/v1/admin/recharge
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{admin_jwt_token}}
+body:
+  type: text
+  content: |-
+    {
+      "email": "user1@univpm.it",
+      "credit": 1500.0
+    }
+order: 2000

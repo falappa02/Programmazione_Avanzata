@@ -1,0 +1,14 @@
+$kind: http-request
+url: http://localhost:3000/api/v1/datasets/{{dataset_id}}
+method: PUT
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{jwt_token}}
+body:
+  type: text
+  content: |-
+    {
+      "name": "Aggiornato Dataset Traffico",
+      "tags": ["updated", "traffic"]
+    }
+order: 4000

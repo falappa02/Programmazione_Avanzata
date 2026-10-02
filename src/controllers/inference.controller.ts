@@ -47,9 +47,10 @@ export class InferenceController {
     try {
       const userId = req.user!.id;
       const { id, frameIndex } = req.params;
+      const contentId = (req.query.contentId as string) || undefined;
       const frameIdx = parseInt(frameIndex, 10) || 0;
 
-      const imageBuffer = await inferenceService.getFrameVisualization(userId, id, frameIdx);
+      const imageBuffer = await inferenceService.getFrameVisualization(userId, id, frameIdx, contentId);
       res.setHeader('Content-Type', 'image/png');
       res.status(200).send(imageBuffer);
     } catch (error) {
