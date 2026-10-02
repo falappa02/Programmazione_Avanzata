@@ -56,13 +56,18 @@ def create_mock_frame(file_path, content_id, output_dir, frame_index):
         ]
     }
 
-def process_video(file_path, content_id, output_dir, yolo_model, max_frames=30, sample_interval=1):
+def process_video(file_path, content_id, output_dir, yolo_model, max_frames=30, sample_interval=None):
     frames_data = []
     try:
         import cv2
         cap = cv2.VideoCapture(file_path)
         if not cap.isOpened():
             raise Exception("Cannot open video with cv2.VideoCapture")
+        
+        # Calculate dynamic sampling interval based on video FPS (e.g. 1 frame every second)
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        if sample_interval is None:
+            sample_interval = max(1, int(round(fps))) if fps > 0 else 30
         
         current_frame = 0
         saved_index = 0
