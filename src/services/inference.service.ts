@@ -179,30 +179,29 @@ export class InferenceService {
       throw new NotFoundError('Nessun risultato di rilevamento disponibile per questo processamento.');
     }
 
-    // Search across all detections for a frame matching the requested frameIndex
-    let frameData: any = null;
-    for (const detection of result.detections) {
-      const frames = detection.frames || [];
-      const found = frames.find((f: any) => f.frameIndex === frameIndex);
-      if (found) {
-        frameData = found;
-        break;
+    // Raccoglie tutti i frame/immagini di tutti i contenuti elaborati nel dataset
+    const allFrames: any[] = [];
+    for (const det of result.detections) {
+      for (const f of det.frames || []) {
+        allFrames.push({
+          ...f,
+          contentId: det.contentId,
+          originalName: det.originalName,
+        });
       }
     }
 
-    // Fallback: if frameIndex is 0 and not found explicitly, take the first available frame from any detection
-    if (!frameData && frameIndex === 0) {
-      for (const detection of result.detections) {
-        if (detection.frames && detection.frames.length > 0) {
-          frameData = detection.frames[0];
-          break;
-        }
-      }
+    if (allFrames.length === 0) {
+      throw new NotFoundError('Nessun fotogramma o immagine disponibile nei risultati.');
     }
 
-    if (!frameData) {
-      throw new NotFoundError(`Frame index ${frameIndex} non trovato nei risultati.`);
+    if (frameIndex < 0 || frameIndex >= allFrames.length) {
+      throw new NotFoundError(
+        `Indice frame/immagine ${frameIndex} non trovato. Questo dataset contiene ${allFrames.length} frame/immagini elaborate (indici validi da 0 a ${allFrames.length - 1}).`
+      );
     }
+
+    const frameData = allFrames[frameIndex];
 
     const originalPath = frameData.originalPath;
     const annotatedPath = frameData.annotatedPath;
