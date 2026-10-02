@@ -216,13 +216,17 @@ export class InferenceService {
         throw new NotFoundError('Nessun fotogramma o immagine disponibile nei risultati.');
       }
 
-      if (frameIndex < 0 || frameIndex >= allFrames.length) {
+      // Prima cerca per corrispondenza esplicita su frameIndex, altrimenti usa l'indice posizionale
+      const foundByFrameIndex = allFrames.find((f: any) => f.frameIndex === frameIndex);
+      if (foundByFrameIndex) {
+        frameData = foundByFrameIndex;
+      } else if (frameIndex >= 0 && frameIndex < allFrames.length) {
+        frameData = allFrames[frameIndex];
+      } else {
         throw new NotFoundError(
           `Indice frame/immagine ${frameIndex} non trovato. Questo dataset contiene ${allFrames.length} frame/immagini elaborate (indici validi da 0 a ${allFrames.length - 1}).`
         );
       }
-
-      frameData = allFrames[frameIndex];
     }
 
     const originalPath = frameData.originalPath;
