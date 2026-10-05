@@ -4,7 +4,7 @@ import { authMiddleware } from '../middlewares/auth.middleware';
 
 const router = Router();
 
-// Route: [U] Get remaining user token credit
+//Get crediti rimanenti
 router.get('/credit', authMiddleware, (req, res, next) => userController.getCredit(req, res, next));
 
 export default router;

@@ -7,9 +7,7 @@ import { BadRequestError } from '../errors/BadRequestError';
 import { UnauthorizedError } from '../errors/UnauthorizedError';
 
 export class AuthService {
-  /**
-   * Register a new user with initial seed token credit.
-   */
+  //Registra utente con credito 1000
   public async register(email: string, password: string, role: 'admin' | 'user' = 'user', initialTokens: number = 1000.0) {
     const existing = await User.findOne({ where: { email } });
     if (existing) {
@@ -36,9 +34,7 @@ export class AuthService {
     };
   }
 
-  /**
-   * Login user and issue RS256 signed JWT token containing essential metadata.
-   */
+  //Login dell'utente
   public async login(email: string, password: string) {
     const user = await User.findOne({ where: { email } });
     if (!user) {
@@ -62,13 +58,11 @@ export class AuthService {
     };
   }
 
-  /**
-   * Helper: Generate RS256 JWT Token containing essential metadata only.
-   */
+  //Genera token privato
   private generateJwtToken(user: User): string {
     const { privateKey } = getRsaKeys();
 
-    // Payload contains ONLY essential user metadata: id, email, role
+    
     const payload = {
       id: user.id,
       email: user.email,

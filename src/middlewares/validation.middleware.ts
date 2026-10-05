@@ -3,7 +3,7 @@ import { AnyZodObject, ZodError } from 'zod';
 import { BadRequestError } from '../errors/BadRequestError';
 
 /**
- * Middleware: Input validation using Zod schemas for body, query, and params.
+ * Middleware: Validazione input usando zod per body query e params
  */
 export function validate(schema: AnyZodObject) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
