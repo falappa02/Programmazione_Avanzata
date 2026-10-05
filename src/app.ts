@@ -6,12 +6,12 @@ import { NotFoundError } from './errors/NotFoundError';
 
 const app = express();
 
-// Middlewares
+// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Root Welcome Endpoint
+// Root Endpoint
 app.get('/', (req, res) => {
   res.status(200).json({
     success: true,
@@ -36,7 +36,7 @@ app.use((req, res, next) => {
   next(new NotFoundError(`Rotta non trovata: ${req.method} ${req.originalUrl}`));
 });
 
-// Centralized Error Handling Middleware
+
 app.use(errorHandlerMiddleware);
 
 export default app;

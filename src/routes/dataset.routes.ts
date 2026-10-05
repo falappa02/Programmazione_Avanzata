@@ -27,19 +27,19 @@ const updateDatasetSchema = z.object({
 
 router.use(authMiddleware);
 
-// [U] Create Dataset
+// [U] Crea Dataset
 router.post('/', validate(createDatasetSchema), (req, res, next) => datasetController.create(req, res, next));
 
-// [U] Get Datasets List
+// [U] Get Lista Dataset
 router.get('/', (req, res, next) => datasetController.list(req, res, next));
 
-// [U] Update Dataset
+// [U] Aggiorna Dataset
 router.put('/:id', validate(updateDatasetSchema), (req, res, next) => datasetController.update(req, res, next));
 
-// [U] Logical Delete Dataset
+// [U] Cancella Dataset
 router.delete('/:id', (req, res, next) => datasetController.delete(req, res, next));
 
-// [U] Upload Content (Image or Video MP4) to Dataset
+// [U] Upload Content (Immagine o Video) al Dataset
 router.post('/:id/content', uploadMiddleware.single('file'), (req, res, next) =>
   contentController.uploadContent(req, res, next)
 );

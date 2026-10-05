@@ -64,7 +64,7 @@ def process_video(file_path, content_id, output_dir, yolo_model, max_frames=30, 
         if not cap.isOpened():
             raise Exception("Cannot open video with cv2.VideoCapture")
         
-        # Calculate dynamic sampling interval based on video FPS (e.g. 1 frame every second)
+        # Calcolo dei frame ogni 30
         fps = cap.get(cv2.CAP_PROP_FPS)
         if sample_interval is None:
             sample_interval = max(1, int(round(fps))) if fps > 0 else 30
@@ -81,7 +81,7 @@ def process_video(file_path, content_id, output_dir, yolo_model, max_frames=30, 
                 raw_frame_path = os.path.join(output_dir, f"frame_{content_id}_{saved_index}.jpg")
                 annotated_path = os.path.join(output_dir, f"annotated_{content_id}_frame{saved_index}.jpg")
                 
-                # Save raw extracted frame for side-by-side visualization
+                # Salvo per side by side
                 cv2.imwrite(raw_frame_path, frame)
                 
                 boxes_data = []
