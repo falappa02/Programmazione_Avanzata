@@ -31,8 +31,8 @@ async function bootstrap() {
     // 3. Start Express HTTP Server
     const server = app.listen(config.port, () => {
       console.log(`=======================================================`);
-      console.log(`🚀 Server running on http://localhost:${config.port}`);
-      console.log(`📡 Environment: ${config.nodeEnv}`);
+      console.log(` Server running on http://localhost:${config.port}`);
+      console.log(` Environment: ${config.nodeEnv}`);
       console.log(`=======================================================`);
     });
 
