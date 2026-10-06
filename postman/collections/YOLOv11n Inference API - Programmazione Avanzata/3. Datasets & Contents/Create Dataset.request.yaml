@@ -1,0 +1,35 @@
+$kind: http-request
+url: http://localhost:3000/api/v1/datasets
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{jwt_token}}
+body:
+  type: text
+  content: |-
+    {
+      "name": "Urban Traffic Dataset",
+      "tags": ["vehicles", "city", "traffic"]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 201 Created", function () {
+          pm.response.to.have.status(201);
+      });
+
+      const res = pm.response.json();
+      pm.test("Dataset creato con ID valido", function () {
+          pm.expect(res.success).to.be.true;
+          pm.expect(res.data).to.have.property('id');
+          pm.expect(res.data).to.have.property('name');
+          pm.expect(res.data.name).to.eql("Urban Traffic Dataset");
+      });
+
+      if (res.success && res.data && res.data.id) {
+          pm.collectionVariables.set("dataset_id", res.data.id);
+          pm.environment.set("dataset_id", res.data.id);
+          console.log("✅ [Postman] dataset_id salvato:", res.data.id);
+      }
+    language: text/javascript
+order: 1000

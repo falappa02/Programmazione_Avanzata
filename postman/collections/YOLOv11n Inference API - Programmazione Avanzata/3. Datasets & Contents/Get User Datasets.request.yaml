@@ -1,0 +1,28 @@
+$kind: http-request
+url: http://localhost:3000/api/v1/datasets
+method: GET
+headers:
+  Authorization: Bearer {{jwt_token}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 200 OK", function () {
+          pm.response.to.have.status(200);
+      });
+
+      const res = pm.response.json();
+      pm.test("Elenco dataset restituito come array", function () {
+          pm.expect(res.success).to.be.true;
+          pm.expect(res.data).to.be.an('array');
+      });
+
+      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          const currentId = pm.collectionVariables.get("dataset_id");
+          if (!currentId) {
+              pm.collectionVariables.set("dataset_id", res.data[0].id);
+              pm.environment.set("dataset_id", res.data[0].id);
+              console.log("✅ [Postman] dataset_id impostato dal primo dataset trovato:", res.data[0].id);
+          }
+      }
+    language: text/javascript
+order: 2000

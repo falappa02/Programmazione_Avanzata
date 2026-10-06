@@ -1,0 +1,34 @@
+$kind: http-request
+url: http://localhost:3000/api/v1/inference
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{jwt_token}}
+body:
+  type: text
+  content: |-
+    {
+      "datasetId": "{{dataset_id}}",
+      "modelId": "yolov11n"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 202 Accepted", function () {
+          pm.response.to.have.status(202);
+      });
+
+      const res = pm.response.json();
+      pm.test("Inferenza accodata con stato PENDING", function () {
+          pm.expect(res.success).to.be.true;
+          pm.expect(res.data).to.have.property('processingId');
+          pm.expect(res.data.status).to.eql('PENDING');
+      });
+
+      if (res.success && res.data && res.data.processingId) {
+          pm.collectionVariables.set("processing_id", res.data.processingId);
+          pm.environment.set("processing_id", res.data.processingId);
+          console.log("✅ [Postman] processing_id salvato:", res.data.processingId);
+      }
+    language: text/javascript
+order: 2000

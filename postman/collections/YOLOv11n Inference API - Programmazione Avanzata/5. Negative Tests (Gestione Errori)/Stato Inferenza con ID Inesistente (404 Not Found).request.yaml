@@ -1,0 +1,19 @@
+$kind: http-request
+url: http://localhost:3000/api/v1/inference/00000000-0000-0000-0000-000000000000/status
+method: GET
+headers:
+  Authorization: Bearer {{jwt_token}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 404 Not Found", function () {
+          pm.response.to.have.status(404);
+      });
+
+      const res = pm.response.json();
+      pm.test("Errore risorsa non trovata", function () {
+          pm.expect(res.success).to.be.false;
+          pm.expect(res.error.statusCode).to.eql(404);
+      });
+    language: text/javascript
+order: 4000

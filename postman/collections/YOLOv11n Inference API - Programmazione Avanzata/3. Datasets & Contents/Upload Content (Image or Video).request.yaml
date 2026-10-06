@@ -1,0 +1,33 @@
+$kind: http-request
+url: http://localhost:3000/api/v1/datasets/{{dataset_id}}/content
+method: POST
+headers:
+  Authorization: Bearer {{jwt_token}}
+body:
+  type: formdata
+  content:
+    - type: file
+      key: file
+      src: []
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 201 Created", function () {
+          pm.response.to.have.status(201);
+      });
+
+      const res = pm.response.json();
+      pm.test("Contenuto caricato e token calcolati correttamente", function () {
+          pm.expect(res.success).to.be.true;
+          pm.expect(res.data).to.have.property('id');
+          pm.expect(res.data).to.have.property('tokenCost');
+          pm.expect(res.data.tokenCost).to.be.a('number');
+      });
+
+      if (res.success && res.data && res.data.id) {
+          pm.collectionVariables.set("content_id", res.data.id);
+          pm.environment.set("content_id", res.data.id);
+          console.log("✅ [Postman] content_id salvato:", res.data.id);
+      }
+    language: text/javascript
+order: 3000
