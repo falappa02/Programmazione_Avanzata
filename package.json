@@ -8,6 +8,8 @@
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "seed": "ts-node src/scripts/seed.ts",
+    "setup:keys": "ts-node src/scripts/generate-keys.ts",
+    "setup": "node -e \"const fs=require('fs'); if(!fs.existsSync('.env')&&fs.existsSync('.env.example')){fs.copyFileSync('.env.example','.env');console.log('Created .env from .env.example');}\" && npm run setup:keys",
     "test": "jest --detectOpenHandles --forceExit"
   },
   "keywords": [
