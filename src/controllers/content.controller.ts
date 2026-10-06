@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { contentService } from '../services/content.service';
+import { HttpStatus } from '../enums';
 
 export class ContentController {
   public async uploadContent(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -9,7 +10,7 @@ export class ContentController {
       const file = req.file;
 
       const result = await contentService.addContentToDataset(userId, datasetId, file!);
-      res.status(201).json({
+      res.status(HttpStatus.CREATED).json({
         success: true,
         message: 'Contenuto caricato con successo nel dataset.',
         data: result,

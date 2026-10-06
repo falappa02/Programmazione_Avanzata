@@ -2,15 +2,77 @@
 	"info": {
 		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 		"name": "YOLOv11n Inference API - Programmazione Avanzata",
-		"description": "Collezione Postman completa per la verifica di tutte le rotte dell'API backend.",
+		"description": "Collezione Postman completa per la verifica di tutte le rotte dell'API backend con script di test automatici (status code, schema, token chaining, negative testing).",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000/api/v1",
+			"type": "string"
+		},
+		{
+			"key": "jwt_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "admin_jwt_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "dataset_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "content_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "processing_id",
+			"value": "",
+			"type": "string"
+		}
+	],
 	"item": [
 		{
-			"name": "Auth",
+			"name": "1. Auth",
 			"item": [
 				{
 					"name": "Register User 1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Tempo di risposta < 1000ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(1000);",
+									"});",
+									"",
+									"const res = pm.response.json();",
+									"pm.test(\"Registrazione valida e token restituito\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data).to.have.property('token');",
+									"    pm.expect(res.data.user.email).to.eql('user1@univpm.it');",
+									"});",
+									"",
+									"if (res.success && res.data && res.data.token) {",
+									"    pm.collectionVariables.set(\"jwt_token\", res.data.token);",
+									"    pm.environment.set(\"jwt_token\", res.data.token);",
+									"    console.log(\"✅ [Postman] jwt_token salvato per user1!\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [
@@ -34,6 +96,36 @@
 				},
 				{
 					"name": "Login User 1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Tempo di risposta < 800ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(800);",
+									"});",
+									"",
+									"const res = pm.response.json();",
+									"pm.test(\"Login riuscito e token presente\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data).to.have.property('token');",
+									"    pm.expect(res.data.user.role).to.eql('user');",
+									"});",
+									"",
+									"if (res.success && res.data && res.data.token) {",
+									"    pm.collectionVariables.set(\"jwt_token\", res.data.token);",
+									"    pm.environment.set(\"jwt_token\", res.data.token);",
+									"    console.log(\"✅ [Postman] jwt_token salvato con successo!\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [
@@ -54,14 +146,84 @@
 							"path": ["api", "v1", "auth", "login"]
 						}
 					}
+				},
+				{
+					"name": "Login Admin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const res = pm.response.json();",
+									"pm.test(\"Admin autenticato con ruolo admin\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data.user.role).to.eql('admin');",
+									"    pm.expect(res.data).to.have.property('token');",
+									"});",
+									"",
+									"if (res.success && res.data && res.data.token) {",
+									"    pm.collectionVariables.set(\"admin_jwt_token\", res.data.token);",
+									"    pm.environment.set(\"admin_jwt_token\", res.data.token);",
+									"    console.log(\"✅ [Postman] admin_jwt_token salvato con successo!\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@univpm.it\",\n  \"password\": \"Admin123!\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:3000/api/v1/auth/login",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["api", "v1", "auth", "login"]
+						}
+					}
 				}
 			]
 		},
 		{
-			"name": "User & Admin",
+			"name": "2. User & Admin",
 			"item": [
 				{
 					"name": "Get User Remaining Credit",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const res = pm.response.json();",
+									"pm.test(\"Risposta contiene il bilancio crediti valido\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data).to.have.all.keys('userId', 'email', 'tokens');",
+									"    pm.expect(res.data.tokens).to.be.a('number');",
+									"    pm.expect(res.data.tokens).to.be.at.least(0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "GET",
 						"header": [
@@ -81,6 +243,26 @@
 				},
 				{
 					"name": "Admin Recharge User Credit",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const res = pm.response.json();",
+									"pm.test(\"Ricarica crediti completata con successo\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data).to.have.property('tokens');",
+									"    pm.expect(res.data.tokens).to.be.a('number');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [
@@ -109,10 +291,37 @@
 			]
 		},
 		{
-			"name": "Datasets & Contents",
+			"name": "3. Datasets & Contents",
 			"item": [
 				{
 					"name": "Create Dataset",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"const res = pm.response.json();",
+									"pm.test(\"Dataset creato con ID valido\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data).to.have.property('id');",
+									"    pm.expect(res.data).to.have.property('name');",
+									"    pm.expect(res.data.name).to.eql(\"Urban Traffic Dataset\");",
+									"});",
+									"",
+									"if (res.success && res.data && res.data.id) {",
+									"    pm.collectionVariables.set(\"dataset_id\", res.data.id);",
+									"    pm.environment.set(\"dataset_id\", res.data.id);",
+									"    console.log(\"✅ [Postman] dataset_id salvato:\", res.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [
@@ -140,6 +349,34 @@
 				},
 				{
 					"name": "Get User Datasets",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const res = pm.response.json();",
+									"pm.test(\"Elenco dataset restituito come array\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data).to.be.an('array');",
+									"});",
+									"",
+									"if (res.success && Array.isArray(res.data) && res.data.length > 0) {",
+									"    const currentId = pm.collectionVariables.get(\"dataset_id\");",
+									"    if (!currentId) {",
+									"        pm.collectionVariables.set(\"dataset_id\", res.data[0].id);",
+									"        pm.environment.set(\"dataset_id\", res.data[0].id);",
+									"        console.log(\"✅ [Postman] dataset_id impostato dal primo dataset trovato:\", res.data[0].id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "GET",
 						"header": [
@@ -159,6 +396,33 @@
 				},
 				{
 					"name": "Upload Content (Image or Video)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"const res = pm.response.json();",
+									"pm.test(\"Contenuto caricato e token calcolati correttamente\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data).to.have.property('id');",
+									"    pm.expect(res.data).to.have.property('tokenCost');",
+									"    pm.expect(res.data.tokenCost).to.be.a('number');",
+									"});",
+									"",
+									"if (res.success && res.data && res.data.id) {",
+									"    pm.collectionVariables.set(\"content_id\", res.data.id);",
+									"    pm.environment.set(\"content_id\", res.data.id);",
+									"    console.log(\"✅ [Postman] content_id salvato:\", res.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [
@@ -188,6 +452,25 @@
 				},
 				{
 					"name": "Update Dataset",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const res = pm.response.json();",
+									"pm.test(\"Dataset aggiornato correttamente\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data.name).to.eql(\"Aggiornato Dataset Traffico\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "PUT",
 						"header": [
@@ -215,6 +498,24 @@
 				},
 				{
 					"name": "Delete Dataset (Soft Delete)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const res = pm.response.json();",
+									"pm.test(\"Dataset cancellato con successo (soft-delete)\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "DELETE",
 						"header": [
@@ -235,10 +536,30 @@
 			]
 		},
 		{
-			"name": "Inference",
+			"name": "4. Inference",
 			"item": [
 				{
 					"name": "Get Supported YOLO Models",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const res = pm.response.json();",
+									"pm.test(\"Modello yolov11n presente nei modelli supportati\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data).to.have.property('supportedModels');",
+									"    pm.expect(res.data.supportedModels).to.include('yolov11n');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "GET",
 						"header": [
@@ -258,6 +579,32 @@
 				},
 				{
 					"name": "Trigger Inference",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 202 Accepted\", function () {",
+									"    pm.response.to.have.status(202);",
+									"});",
+									"",
+									"const res = pm.response.json();",
+									"pm.test(\"Inferenza accodata con stato PENDING\", function () {",
+									"    pm.expect(res.success).to.be.true;",
+									"    pm.expect(res.data).to.have.property('processingId');",
+									"    pm.expect(res.data.status).to.eql('PENDING');",
+									"});",
+									"",
+									"if (res.success && res.data && res.data.processingId) {",
+									"    pm.collectionVariables.set(\"processing_id\", res.data.processingId);",
+									"    pm.environment.set(\"processing_id\", res.data.processingId);",
+									"    console.log(\"✅ [Postman] processing_id salvato:\", res.data.processingId);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [
@@ -285,6 +632,36 @@
 				},
 				{
 					"name": "Get Inference Status & Results",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const res = pm.response.json();",
+									"const status = res.data ? res.data.status : null;",
+									"",
+									"pm.test(\"Stato del job valido (PENDING, RUNNING o COMPLETED)\", function () {",
+									"    pm.expect(['PENDING', 'RUNNING', 'COMPLETED', 'FAILED']).to.include(status);",
+									"});",
+									"",
+									"if (status === 'COMPLETED') {",
+									"    pm.test(\"Risultati inferenza contengono rilevamenti YOLO\", function () {",
+									"        pm.expect(res.data).to.have.property('resultJson');",
+									"        pm.expect(res.data.resultJson).to.have.property('detections');",
+									"    });",
+									"    console.log(\"🎉 [Postman] Inferenza completata con successo!\");",
+									"} else if (status === 'PENDING' || status === 'RUNNING') {",
+									"    console.log(\"⏳ [Postman] Job ancora in elaborazione (\" + status + \").\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "GET",
 						"header": [
@@ -304,6 +681,24 @@
 				},
 				{
 					"name": "Get Split Visual Frame (Original vs BBox)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Risposta è un'immagine PNG valida\", function () {",
+									"    pm.response.to.have.header(\"Content-Type\", \"image/png\");",
+									"    pm.expect(pm.response.responseSize).to.be.above(500);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "GET",
 						"header": [
@@ -318,6 +713,217 @@
 							"host": ["localhost"],
 							"port": "3000",
 							"path": ["api", "v1", "inference", "{{processing_id}}", "frame", "0"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "5. Negative Tests (Gestione Errori)",
+			"item": [
+				{
+					"name": "Login con Password Errata (401)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401 Unauthorized\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"const res = pm.response.json();",
+									"pm.test(\"Errore strutturato restituito\", function () {",
+									"    pm.expect(res.success).to.be.false;",
+									"    pm.expect(res.error).to.have.property('message');",
+									"    pm.expect(res.error.statusCode).to.eql(401);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user1@univpm.it\",\n  \"password\": \"PasswordSbagliata123!\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:3000/api/v1/auth/login",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["api", "v1", "auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "Accesso Rotta Protetta Senza Token (401)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401 Unauthorized\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"const res = pm.response.json();",
+									"pm.test(\"Accesso rifiutato per token mancante\", function () {",
+									"    pm.expect(res.success).to.be.false;",
+									"    pm.expect(res.error.statusCode).to.eql(401);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:3000/api/v1/users/credit",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["api", "v1", "users", "credit"]
+						}
+					}
+				},
+				{
+					"name": "Ricarica Admin con Token Utente Standard (403 Forbidden)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 403 Forbidden\", function () {",
+									"    pm.response.to.have.status(403);",
+									"});",
+									"",
+									"const res = pm.response.json();",
+									"pm.test(\"Permessi insufficienti per utente non admin\", function () {",
+									"    pm.expect(res.success).to.be.false;",
+									"    pm.expect(res.error.statusCode).to.eql(403);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user1@univpm.it\",\n  \"credit\": 500.0\n}"
+						},
+						"url": {
+							"raw": "http://localhost:3000/api/v1/admin/recharge",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["api", "v1", "admin", "recharge"]
+						}
+					}
+				},
+				{
+					"name": "Stato Inferenza con ID Inesistente (404 Not Found)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 404 Not Found\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"const res = pm.response.json();",
+									"pm.test(\"Errore risorsa non trovata\", function () {",
+									"    pm.expect(res.success).to.be.false;",
+									"    pm.expect(res.error.statusCode).to.eql(404);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:3000/api/v1/inference/00000000-0000-0000-0000-000000000000/status",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["api", "v1", "inference", "00000000-0000-0000-0000-000000000000", "status"]
+						}
+					}
+				},
+				{
+					"name": "Creazione Dataset con Body Non Valido (400 Bad Request)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400 Bad Request\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"const res = pm.response.json();",
+									"pm.test(\"Validazione fallita restituita\", function () {",
+									"    pm.expect(res.success).to.be.false;",
+									"    pm.expect(res.error.statusCode).to.eql(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"invalidField\": 123\n}"
+						},
+						"url": {
+							"raw": "http://localhost:3000/api/v1/datasets",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["api", "v1", "datasets"]
 						}
 					}
 				}

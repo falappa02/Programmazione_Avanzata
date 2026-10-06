@@ -2,9 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { AnyZodObject, ZodError } from 'zod';
 import { BadRequestError } from '../errors/BadRequestError';
 
-/**
- * Middleware: Validazione input usando zod per body query e params
- */
+// Middleware: Validazione input usando zod per body query e params
+ 
 export function validate(schema: AnyZodObject) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

@@ -1,0 +1,27 @@
+$kind: http-request
+url: http://localhost:3000/api/v1/datasets/{{dataset_id}}
+method: PUT
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{jwt_token}}
+body:
+  type: text
+  content: |-
+    {
+      "name": "Aggiornato Dataset Traffico",
+      "tags": ["updated", "traffic"]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 200 OK", function () {
+          pm.response.to.have.status(200);
+      });
+
+      const res = pm.response.json();
+      pm.test("Dataset aggiornato correttamente", function () {
+          pm.expect(res.success).to.be.true;
+          pm.expect(res.data.name).to.eql("Aggiornato Dataset Traffico");
+      });
+    language: text/javascript
+order: 4000

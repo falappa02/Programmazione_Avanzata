@@ -3,6 +3,7 @@ import cors from 'cors';
 import routes from './routes';
 import { errorHandlerMiddleware } from './middlewares/error.middleware';
 import { NotFoundError } from './errors/NotFoundError';
+import { HttpStatus } from './enums';
 
 const app = express();
 
@@ -13,7 +14,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Root Endpoint
 app.get('/', (req, res) => {
-  res.status(200).json({
+  res.status(HttpStatus.OK).json({
     success: true,
     message: 'Benvenuto nelle API Backend di Inferenza YOLOv11n (Programmazione Avanzata - UnivPM)',
     version: '1.0.0',
@@ -25,7 +26,7 @@ app.get('/', (req, res) => {
 
 // Health Check Endpoint
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'OK', message: 'YOLO Inference API Backend Server is healthy.' });
+  res.status(HttpStatus.OK).json({ status: 'OK', message: 'YOLO Inference API Backend Server is healthy.' });
 });
 
 // API Routes Aggregator

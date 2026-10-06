@@ -1,0 +1,30 @@
+$kind: http-request
+url: http://localhost:3000/api/v1/inference/{{processing_id}}/status
+method: GET
+headers:
+  Authorization: Bearer {{jwt_token}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 200 OK", function () {
+          pm.response.to.have.status(200);
+      });
+
+      const res = pm.response.json();
+      const status = res.data ? res.data.status : null;
+
+      pm.test("Stato del job valido (PENDING, RUNNING o COMPLETED)", function () {
+          pm.expect(['PENDING', 'RUNNING', 'COMPLETED', 'FAILED']).to.include(status);
+      });
+
+      if (status === 'COMPLETED') {
+          pm.test("Risultati inferenza contengono rilevamenti YOLO", function () {
+              pm.expect(res.data).to.have.property('resultJson');
+              pm.expect(res.data.resultJson).to.have.property('detections');
+          });
+          console.log("🎉 [Postman] Inferenza completata con successo!");
+      } else if (status === 'PENDING' || status === 'RUNNING') {
+          console.log("⏳ [Postman] Job ancora in elaborazione (" + status + ").");
+      }
+    language: text/javascript
+order: 3000

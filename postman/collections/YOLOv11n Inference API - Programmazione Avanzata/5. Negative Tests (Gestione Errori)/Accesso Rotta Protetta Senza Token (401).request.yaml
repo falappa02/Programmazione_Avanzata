@@ -1,0 +1,17 @@
+$kind: http-request
+url: http://localhost:3000/api/v1/users/credit
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 401 Unauthorized", function () {
+          pm.response.to.have.status(401);
+      });
+
+      const res = pm.response.json();
+      pm.test("Accesso rifiutato per token mancante", function () {
+          pm.expect(res.success).to.be.false;
+          pm.expect(res.error.statusCode).to.eql(401);
+      });
+    language: text/javascript
+order: 2000

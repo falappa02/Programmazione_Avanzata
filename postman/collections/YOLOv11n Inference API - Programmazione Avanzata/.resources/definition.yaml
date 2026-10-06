@@ -1,2 +1,9 @@
 $kind: collection
-description: Collezione Postman completa per la verifica di tutte le rotte dell'API backend.
+description: Collezione Postman completa per la verifica di tutte le rotte dell'API backend con script di test automatici (status code, schema, token chaining, negative testing).
+variables:
+  baseUrl: http://localhost:3000/api/v1
+  jwt_token: ""
+  admin_jwt_token: ""
+  dataset_id: ""
+  content_id: ""
+  processing_id: ""

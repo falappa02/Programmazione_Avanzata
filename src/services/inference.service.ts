@@ -27,9 +27,9 @@ export class InferenceService {
   }
 
   /**
-   * Trigger ML Inference on a specific dataset.
-   * Calculates total required tokens (4 tokens/image, 1.75 tokens/frame video).
-   * Verifies credit priori. Aborts priori if credit is insufficient.
+   * Aziona ML sul dataset
+   * Calcola i token (4 token/immagine, 1.75 token/frame video).
+   * Verifica i crediti e abortisce se non sono abbastanza
    */
   public async triggerInference(userId: string, datasetId: string, modelId: string = DEFAULT_MODEL_ID) {
     if (!isValidModelId(modelId)) {
@@ -52,7 +52,7 @@ export class InferenceService {
       throw new BadRequestError('Impossibile avviare l\'inferenza: il dataset è vuoto.');
     }
 
-    // Calculate total required inference token cost
+    // Calcola il costo
     let totalInferenceCost = 0;
     for (const item of contents) {
       const strategy = CostStrategyFactory.getStrategy(item.type);
@@ -62,13 +62,13 @@ export class InferenceService {
 
     totalInferenceCost = Math.round(totalInferenceCost * 100) / 100;
 
-    // Check user token balance
+    // Check user
     const user = await User.findByPk(userId);
     if (!user) {
       throw new NotFoundError('Utente non trovato.');
     }
 
-    // Priori Credit Check: Abort priori if balance is insufficient
+    // Verifica i crediti e abortisce se non sono abbastanza
     if (user.tokens < totalInferenceCost) {
       // Create an ABORTED processing record for audit
       const abortedProcessing = await Processing.create({
@@ -86,11 +86,11 @@ export class InferenceService {
       );
     }
 
-    // Deduct user tokens
+    // Toglie i crediti
     user.tokens = Math.round((user.tokens - totalInferenceCost) * 100) / 100;
     await user.save();
 
-    // Create PENDING processing job record
+    
     const processing = await Processing.create({
       datasetId,
       userId,
@@ -99,7 +99,7 @@ export class InferenceService {
       totalCost: totalInferenceCost,
     });
 
-    // Enqueue job in Bull Queue for background execution
+    //Bull queue
     try {
       await inferenceQueue.add({
         processingId: processing.id,
@@ -187,7 +187,7 @@ export class InferenceService {
     let frameData: any;
 
     if (contentId) {
-      // 1. Cerca direttamente il contenuto specifico tramite il suo contentId
+      //Cerca direttamente il contenuto specifico tramite il suo contentId
       const targetDetection = result.detections.find((d: any) => d.contentId === contentId);
       if (!targetDetection) {
         throw new NotFoundError(`Nessun contenuto trovato con contentId '${contentId}' in questa inferenza.`);
@@ -200,7 +200,7 @@ export class InferenceService {
 
       frameData = frames.find((f: any) => f.frameIndex === frameIndex) || frames[frameIndex] || frames[0];
     } else {
-      // 2. Se non viene passato contentId, indicizza sequenzialmente tutte le immagini e i frame del dataset
+      //Se non viene passato contentId, indicizza sequenzialmente tutte le immagini e i frame del dataset
       const allFrames: any[] = [];
       for (const det of result.detections) {
         for (const f of det.frames || []) {

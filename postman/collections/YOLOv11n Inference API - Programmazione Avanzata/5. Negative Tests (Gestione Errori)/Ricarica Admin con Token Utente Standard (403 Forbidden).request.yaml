@@ -1,0 +1,27 @@
+$kind: http-request
+url: http://localhost:3000/api/v1/admin/recharge
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{jwt_token}}
+body:
+  type: text
+  content: |-
+    {
+      "email": "user1@univpm.it",
+      "credit": 500.0
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 403 Forbidden", function () {
+          pm.response.to.have.status(403);
+      });
+
+      const res = pm.response.json();
+      pm.test("Permessi insufficienti per utente non admin", function () {
+          pm.expect(res.success).to.be.false;
+          pm.expect(res.error.statusCode).to.eql(403);
+      });
+    language: text/javascript
+order: 3000

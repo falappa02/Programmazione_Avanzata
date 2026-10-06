@@ -1,0 +1,26 @@
+$kind: http-request
+url: http://localhost:3000/api/v1/datasets
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{jwt_token}}
+body:
+  type: text
+  content: |-
+    {
+      "invalidField": 123
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 400 Bad Request", function () {
+          pm.response.to.have.status(400);
+      });
+
+      const res = pm.response.json();
+      pm.test("Validazione fallita restituita", function () {
+          pm.expect(res.success).to.be.false;
+          pm.expect(res.error.statusCode).to.eql(400);
+      });
+    language: text/javascript
+order: 5000

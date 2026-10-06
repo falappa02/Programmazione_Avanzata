@@ -1,0 +1,18 @@
+$kind: http-request
+url: http://localhost:3000/api/v1/inference/{{processing_id}}/frame/0
+method: GET
+headers:
+  Authorization: Bearer {{jwt_token}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 200 OK", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Risposta è un'immagine PNG valida", function () {
+          pm.response.to.have.header("Content-Type", "image/png");
+          pm.expect(pm.response.responseSize).to.be.above(500);
+      });
+    language: text/javascript
+order: 4000

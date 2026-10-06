@@ -1,0 +1,28 @@
+$kind: http-request
+url: http://localhost:3000/api/v1/admin/recharge
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{admin_jwt_token}}
+body:
+  type: text
+  content: |-
+    {
+      "email": "user1@univpm.it",
+      "credit": 1500.0
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 200 OK", function () {
+          pm.response.to.have.status(200);
+      });
+
+      const res = pm.response.json();
+      pm.test("Ricarica crediti completata con successo", function () {
+          pm.expect(res.success).to.be.true;
+          pm.expect(res.data).to.have.property('tokens');
+          pm.expect(res.data.tokens).to.be.a('number');
+      });
+    language: text/javascript
+order: 2000
