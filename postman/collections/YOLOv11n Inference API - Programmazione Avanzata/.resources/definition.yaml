@@ -1,2 +1,4 @@
 $kind: collection
 description: Collezione Postman completa per la verifica di tutte le rotte dell'API backend.
+variables:
+  variable_key: ""

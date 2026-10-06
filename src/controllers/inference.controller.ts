@@ -1,11 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import { inferenceService } from '../services/inference.service';
+import { HttpStatus } from '../enums';
 
 export class InferenceController {
   public async getAvailableModels(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const data = inferenceService.getAvailableModels();
-      res.status(200).json({
+      res.status(HttpStatus.OK).json({
         success: true,
         data,
       });
@@ -19,7 +20,7 @@ export class InferenceController {
       const userId = req.user!.id;
       const { datasetId, modelId } = req.body;
       const result = await inferenceService.triggerInference(userId, datasetId, modelId);
-      res.status(202).json({
+      res.status(HttpStatus.ACCEPTED).json({
         success: true,
         message: 'Richiesta di inferenza presa in carico e accodata.',
         data: result,
@@ -34,7 +35,7 @@ export class InferenceController {
       const userId = req.user!.id;
       const { id } = req.params;
       const result = await inferenceService.getProcessingStatus(userId, id);
-      res.status(200).json({
+      res.status(HttpStatus.OK).json({
         success: true,
         data: result,
       });
@@ -52,7 +53,7 @@ export class InferenceController {
 
       const imageBuffer = await inferenceService.getFrameVisualization(userId, id, frameIdx, contentId);
       res.setHeader('Content-Type', 'image/png');
-      res.status(200).send(imageBuffer);
+      res.status(HttpStatus.OK).send(imageBuffer);
     } catch (error) {
       next(error);
     }

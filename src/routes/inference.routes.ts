@@ -21,24 +21,24 @@ const triggerInferenceSchema = z.object({
   }),
 });
 
-// Get List of Supported YOLO Models (consultabile anche prima dell'auth)
+// Get lista dei modelli di YOLO (consultabile anche prima dell'auth)
 router.get('/models', (req, res, next) =>
   inferenceController.getAvailableModels(req, res, next)
 );
 
 router.use(authMiddleware);
 
-// [U] Trigger Inference on a Dataset
+//Trigger Inferenza sul Dataset
 router.post('/', validate(triggerInferenceSchema), (req, res, next) =>
   inferenceController.trigger(req, res, next)
 );
 
-// [U] Get Processing Status & Results
+// Get stato del processo e risultato
 router.get('/:id/status', (req, res, next) =>
   inferenceController.getStatus(req, res, next)
 );
 
-// [U] Get Side-by-Side Visual Frame Image
+// Get immagine side by side
 router.get('/:id/frame/:frameIndex', (req, res, next) =>
   inferenceController.getFrameVisualization(req, res, next)
 );

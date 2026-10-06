@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { datasetService } from '../services/dataset.service';
+import { HttpStatus } from '../enums';
 
 export class DatasetController {
   public async create(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -7,7 +8,7 @@ export class DatasetController {
       const userId = req.user!.id;
       const { name, tags } = req.body;
       const dataset = await datasetService.createDataset(userId, name, tags);
-      res.status(201).json({
+      res.status(HttpStatus.CREATED).json({
         success: true,
         message: 'Dataset creato con successo.',
         data: dataset,
@@ -21,7 +22,7 @@ export class DatasetController {
     try {
       const userId = req.user!.id;
       const datasets = await datasetService.getUserDatasets(userId);
-      res.status(200).json({
+      res.status(HttpStatus.OK).json({
         success: true,
         data: datasets,
       });
@@ -36,7 +37,7 @@ export class DatasetController {
       const { id } = req.params;
       const { name, tags } = req.body;
       const updated = await datasetService.updateDataset(userId, id, name, tags);
-      res.status(200).json({
+      res.status(HttpStatus.OK).json({
         success: true,
         message: 'Dataset aggiornato con successo.',
         data: updated,
@@ -51,7 +52,7 @@ export class DatasetController {
       const userId = req.user!.id;
       const { id } = req.params;
       const result = await datasetService.deleteDataset(userId, id);
-      res.status(200).json({
+      res.status(HttpStatus.OK).json({
         success: true,
         data: result,
       });

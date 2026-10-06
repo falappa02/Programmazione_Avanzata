@@ -1,12 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { authService } from '../services/auth.service';
+import { HttpStatus } from '../enums';
 
 export class AuthController {
   public async register(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { email, password, role } = req.body;
       const result = await authService.register(email, password, role);
-      res.status(201).json({
+      res.status(HttpStatus.CREATED).json({
         success: true,
         data: result,
       });
@@ -19,7 +20,7 @@ export class AuthController {
     try {
       const { email, password } = req.body;
       const result = await authService.login(email, password);
-      res.status(200).json({
+      res.status(HttpStatus.OK).json({
         success: true,
         data: result,
       });
