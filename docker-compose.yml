@@ -51,6 +51,7 @@ services:
       - ./uploads:/app/uploads
       - ./outputs:/app/outputs
       - ./keys:/app/keys
+      - ./src/scripts:/app/src/scripts
     networks:
       - yolo_network
 

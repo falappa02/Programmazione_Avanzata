@@ -244,7 +244,8 @@ def run_inference(contents: list, output_dir: str, model_name: str = "yolov11n")
     yolo_model = None
     if YOLO is not None:
         try:
-            yolo_model = YOLO(f"{model_name}.pt")
+            weight_name = model_name.replace("yolov11", "yolo11")
+            yolo_model = YOLO(f"{weight_name}.pt")
         except (RuntimeError, OSError) as exc:
             sys.stderr.write(f"[Python ML Warning] YOLO load failed ({exc}). Mock used.\n")
 
