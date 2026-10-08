@@ -1,6 +1,5 @@
 import { Dataset, Content } from '../models';
-import { NotFoundError } from '../errors/NotFoundError';
-import { BadRequestError } from '../errors/BadRequestError';
+import { ErrorFactory } from '../errors';
 import { Op } from 'sequelize';
 
 export class DatasetService {
@@ -18,7 +17,7 @@ export class DatasetService {
     });
 
     if (existing) {
-      throw new BadRequestError(`Un dataset denominato '${name}' esiste già per questo utente.`);
+      throw ErrorFactory.badRequest(`Un dataset denominato '${name}' esiste già per questo utente.`);
     }
 
     const dataset = await Dataset.create({
@@ -62,7 +61,7 @@ export class DatasetService {
     });
 
     if (!dataset) {
-      throw new NotFoundError('Dataset non trovato o eliminato.');
+      throw ErrorFactory.notFound('Dataset', datasetId);
     }
 
     if (name && name !== dataset.name) {
@@ -76,7 +75,7 @@ export class DatasetService {
       });
 
       if (existing) {
-        throw new BadRequestError(`Un altro dataset attivo dell'utente ha già il nome '${name}'.`);
+        throw ErrorFactory.badRequest(`Un altro dataset attivo dell'utente ha già il nome '${name}'.`);
       }
 
       dataset.name = name;
@@ -99,7 +98,7 @@ export class DatasetService {
     });
 
     if (!dataset) {
-      throw new NotFoundError('Dataset non trovato o già eliminato.');
+      throw ErrorFactory.notFound('Dataset', datasetId);
     }
 
     dataset.isDeleted = true;

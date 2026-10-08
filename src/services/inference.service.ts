@@ -4,9 +4,7 @@ import { Processing, Dataset, Content, User } from '../models';
 import { CostStrategyFactory } from '../strategies/cost.strategy';
 import { inferenceQueue } from '../queue/inference.queue';
 import { createSideBySideFrameImage } from '../utils/imageCombiner';
-import { NotFoundError } from '../errors/NotFoundError';
-import { InsufficientCreditError } from '../errors/InsufficientCreditError';
-import { BadRequestError } from '../errors/BadRequestError';
+import { ErrorFactory } from '../errors';
 import {
   DEFAULT_MODEL_ID,
   SUPPORTED_MODEL_IDS,
@@ -33,7 +31,7 @@ export class InferenceService {
    */
   public async triggerInference(userId: string, datasetId: string, modelId: string = DEFAULT_MODEL_ID) {
     if (!isValidModelId(modelId)) {
-      throw new BadRequestError(
+      throw ErrorFactory.badRequest(
         `Modello '${modelId}' non supportato. Modelli YOLO ammessi: ${SUPPORTED_MODEL_IDS.join(', ')}`
       );
     }
@@ -44,12 +42,12 @@ export class InferenceService {
     });
 
     if (!dataset) {
-      throw new NotFoundError('Dataset non trovato o eliminato.');
+      throw ErrorFactory.notFound('Dataset', datasetId);
     }
 
     const contents = (dataset as any).contents as Content[];
     if (!contents || contents.length === 0) {
-      throw new BadRequestError('Impossibile avviare l\'inferenza: il dataset è vuoto.');
+      throw ErrorFactory.badRequest('Impossibile avviare l\'inferenza: il dataset è vuoto.');
     }
 
     // Calcola il costo
@@ -65,7 +63,7 @@ export class InferenceService {
     // Check user
     const user = await User.findByPk(userId);
     if (!user) {
-      throw new NotFoundError('Utente non trovato.');
+      throw ErrorFactory.notFound('Utente', userId);
     }
 
     // Verifica i crediti e abortisce se non sono abbastanza
@@ -81,9 +79,7 @@ export class InferenceService {
         errorDetails: `Credito token insufficiente per l'inferenza (${totalInferenceCost} token richiesti, ${user.tokens} disponibili). Processamento annullato apriori.`,
       });
 
-      throw new InsufficientCreditError(
-        `Credito token non sufficiente per l'inferenza. Costo richiesto: ${totalInferenceCost} token, credito disponibile: ${user.tokens}. ID Processamento annullato: ${abortedProcessing.id}`
-      );
+      throw ErrorFactory.insufficientCredit(totalInferenceCost, user.tokens);
     }
 
     // Toglie i crediti
@@ -128,7 +124,7 @@ export class InferenceService {
     });
 
     if (!processing) {
-      throw new NotFoundError(`Processamento non trovato con id '${processingId}'.`);
+      throw ErrorFactory.notFound('Processamento', processingId);
     }
 
     const response: any = {
@@ -172,16 +168,16 @@ export class InferenceService {
     });
 
     if (!processing) {
-      throw new NotFoundError(`Processamento con ID '${processingId}' non trovato.`);
+      throw ErrorFactory.notFound('Processamento', processingId);
     }
 
     if (processing.status !== 'COMPLETED') {
-      throw new BadRequestError(`Il processamento è in stato '${processing.status}'. La visualizzazione dei frame è disponibile solo in stato 'COMPLETED'.`);
+      throw ErrorFactory.badRequest(`Il processamento è in stato '${processing.status}'. La visualizzazione dei frame è disponibile solo in stato 'COMPLETED'.`);
     }
 
     const result = processing.resultJson;
     if (!result || !result.detections || result.detections.length === 0) {
-      throw new NotFoundError('Nessun risultato di rilevamento disponibile per questo processamento.');
+      throw ErrorFactory.notFound('Nessun risultato di rilevamento disponibile per questo processamento.');
     }
 
     let frameData: any;
@@ -190,12 +186,12 @@ export class InferenceService {
       //Cerca direttamente il contenuto specifico tramite il suo contentId
       const targetDetection = result.detections.find((d: any) => d.contentId === contentId);
       if (!targetDetection) {
-        throw new NotFoundError(`Nessun contenuto trovato con contentId '${contentId}' in questa inferenza.`);
+        throw ErrorFactory.notFound('Contenuto', contentId);
       }
 
       const frames = targetDetection.frames || [];
       if (frames.length === 0) {
-        throw new NotFoundError(`Nessun frame disponibile per il contenuto '${contentId}'.`);
+        throw ErrorFactory.notFound(`Nessun frame disponibile per il contenuto '${contentId}'.`);
       }
 
       frameData = frames.find((f: any) => f.frameIndex === frameIndex) || frames[frameIndex] || frames[0];
@@ -213,7 +209,7 @@ export class InferenceService {
       }
 
       if (allFrames.length === 0) {
-        throw new NotFoundError('Nessun fotogramma o immagine disponibile nei risultati.');
+        throw ErrorFactory.notFound('Nessun fotogramma o immagine disponibile nei risultati.');
       }
 
       // Prima cerca per corrispondenza esplicita su frameIndex, altrimenti usa l'indice posizionale
@@ -223,7 +219,7 @@ export class InferenceService {
       } else if (frameIndex >= 0 && frameIndex < allFrames.length) {
         frameData = allFrames[frameIndex];
       } else {
-        throw new NotFoundError(
+        throw ErrorFactory.notFound(
           `Indice frame/immagine ${frameIndex} non trovato. Questo dataset contiene ${allFrames.length} frame/immagini elaborate (indici validi da 0 a ${allFrames.length - 1}).`
         );
       }
@@ -234,12 +230,12 @@ export class InferenceService {
     const objects = frameData.objects || [];
 
     if (!originalPath || !fs.existsSync(originalPath)) {
-      throw new NotFoundError(`Immagine originale del frame non trovata sul disco: ${originalPath}`);
+      throw ErrorFactory.notFound(`Immagine originale del frame non trovata sul disco: ${originalPath}`);
     }
 
     const ext = path.extname(originalPath).toLowerCase();
     if (['.mp4', '.avi', '.mov', '.mkv'].includes(ext)) {
-      throw new BadRequestError(
+      throw ErrorFactory.badRequest(
         `Il percorso registrato punta direttamente al file video (${ext}) anziché ad un fotogramma immagine estratto. Riavviare l'inferenza sul dataset per estrarre i singoli frame JPEG.`
       );
     }

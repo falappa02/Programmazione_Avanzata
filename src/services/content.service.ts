@@ -1,9 +1,7 @@
 import { Dataset, Content, User } from '../models';
 import { CostStrategyFactory } from '../strategies/cost.strategy';
 import { getMediaMetadata } from '../utils/media.utils';
-import { NotFoundError } from '../errors/NotFoundError';
-import { InsufficientCreditError } from '../errors/InsufficientCreditError';
-import { BadRequestError } from '../errors/BadRequestError';
+import { ErrorFactory } from '../errors';
 import path from 'path';
 import fs from 'fs';
 
@@ -18,7 +16,7 @@ export class ContentService {
     file: Express.Multer.File
   ) {
     if (!file) {
-      throw new BadRequestError('Nessun file caricato.');
+      throw ErrorFactory.badRequest('Nessun file caricato.');
     }
 
     const dataset = await Dataset.findOne({
@@ -28,7 +26,7 @@ export class ContentService {
     if (!dataset) {
       // Clean up uploaded temp file if dataset is not found
       if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-      throw new NotFoundError('Dataset non trovato o eliminato.');
+      throw ErrorFactory.notFound('Dataset', datasetId);
     }
 
     const ext = path.extname(file.originalname).toLowerCase();
@@ -45,15 +43,13 @@ export class ContentService {
     const user = await User.findByPk(userId);
     if (!user) {
       if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-      throw new NotFoundError('Utente non trovato.');
+      throw ErrorFactory.notFound('Utente', userId);
     }
 
     if (user.tokens < tokenCost) {
       // Clean up file if tokens are insufficient
       if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-      throw new InsufficientCreditError(
-        `Credito insufficiente per il caricamento del file (${type}). Costo richiesto: ${tokenCost} token. Credito disponibile: ${user.tokens} token.`
-      );
+      throw ErrorFactory.insufficientCredit(tokenCost, user.tokens);
     }
 
     // Deduct user token credit

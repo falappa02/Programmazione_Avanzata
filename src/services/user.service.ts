@@ -1,13 +1,12 @@
 import { User } from '../models/User';
-import { NotFoundError } from '../errors/NotFoundError';
-import { BadRequestError } from '../errors/BadRequestError';
+import { ErrorFactory } from '../errors';
 
 export class UserService {
   //Get credito
   public async getUserCredit(userId: string) {
     const user = await User.findByPk(userId);
     if (!user) {
-      throw new NotFoundError('Utente non trovato.');
+      throw ErrorFactory.notFound('Utente', userId);
     }
     return {
       userId: user.id,
@@ -19,12 +18,12 @@ export class UserService {
   //Ricarica Admin tramite mail
   public async rechargeUserCreditByEmail(email: string, newCredit: number) {
     if (newCredit < 0) {
-      throw new BadRequestError('Il credito ricaricato deve essere un valore positivo.');
+      throw ErrorFactory.badRequest('Il credito ricaricato deve essere un valore positivo.');
     }
 
     const user = await User.findOne({ where: { email } });
     if (!user) {
-      throw new NotFoundError(`Nessun utente trovato con email '${email}'.`);
+      throw ErrorFactory.notFound('Utente con email', email);
     }
 
     user.tokens = Math.round(newCredit * 100) / 100;
