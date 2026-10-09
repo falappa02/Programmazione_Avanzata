@@ -6,6 +6,11 @@ import { inferenceQueue } from '../queue/inference.queue';
 import { createSideBySideFrameImage } from '../utils/imageCombiner';
 import { ErrorFactory } from '../errors';
 import {
+  IProcessingStatusResponse,
+  IInferenceFrame,
+  IContentDetection,
+} from '../types';
+import {
   DEFAULT_MODEL_ID,
   SUPPORTED_MODEL_IDS,
   getAllSupportedModels,
@@ -45,20 +50,19 @@ export class InferenceService {
       throw ErrorFactory.notFound('Dataset', datasetId);
     }
 
-    const contents = (dataset as any).contents as Content[];
-    if (!contents || contents.length === 0) {
+    const contents = dataset.contents || [];
+    if (contents.length === 0) {
       throw ErrorFactory.badRequest('Impossibile avviare l\'inferenza: il dataset è vuoto.');
     }
 
-    // Calcola il costo
-    let totalInferenceCost = 0;
-    for (const item of contents) {
+    // Calcola il costo totale tramite reduce (approccio funzionale)
+    const rawCost = contents.reduce((acc, item) => {
       const strategy = CostStrategyFactory.getStrategy(item.type);
       const count = item.type === 'video' ? item.frameCount : 1;
-      totalInferenceCost += strategy.calculateInferenceCost(count);
-    }
+      return acc + strategy.calculateInferenceCost(count);
+    }, 0);
 
-    totalInferenceCost = Math.round(totalInferenceCost * 100) / 100;
+    const totalInferenceCost = Math.round(rawCost * 100) / 100;
 
     // Check user
     const user = await User.findByPk(userId);
@@ -127,7 +131,7 @@ export class InferenceService {
       throw ErrorFactory.notFound('Processamento', processingId);
     }
 
-    const response: any = {
+    const response: IProcessingStatusResponse = {
       processingId: processing.id,
       datasetId: processing.datasetId,
       modelId: processing.modelId,
@@ -180,11 +184,11 @@ export class InferenceService {
       throw ErrorFactory.notFound('Nessun risultato di rilevamento disponibile per questo processamento.');
     }
 
-    let frameData: any;
+    let frameData: IInferenceFrame;
 
     if (contentId) {
       //Cerca direttamente il contenuto specifico tramite il suo contentId
-      const targetDetection = result.detections.find((d: any) => d.contentId === contentId);
+      const targetDetection = result.detections.find((d: IContentDetection) => d.contentId === contentId);
       if (!targetDetection) {
         throw ErrorFactory.notFound('Contenuto', contentId);
       }
@@ -194,10 +198,10 @@ export class InferenceService {
         throw ErrorFactory.notFound(`Nessun frame disponibile per il contenuto '${contentId}'.`);
       }
 
-      frameData = frames.find((f: any) => f.frameIndex === frameIndex) || frames[frameIndex] || frames[0];
+      frameData = frames.find((f: IInferenceFrame) => f.frameIndex === frameIndex) || frames[frameIndex] || frames[0];
     } else {
       //Se non viene passato contentId, indicizza sequenzialmente tutte le immagini e i frame del dataset
-      const allFrames: any[] = [];
+      const allFrames: IInferenceFrame[] = [];
       for (const det of result.detections) {
         for (const f of det.frames || []) {
           allFrames.push({
@@ -213,7 +217,7 @@ export class InferenceService {
       }
 
       // Prima cerca per corrispondenza esplicita su frameIndex, altrimenti usa l'indice posizionale
-      const foundByFrameIndex = allFrames.find((f: any) => f.frameIndex === frameIndex);
+      const foundByFrameIndex = allFrames.find((f: IInferenceFrame) => f.frameIndex === frameIndex);
       if (foundByFrameIndex) {
         frameData = foundByFrameIndex;
       } else if (frameIndex >= 0 && frameIndex < allFrames.length) {

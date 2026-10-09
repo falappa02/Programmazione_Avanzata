@@ -25,8 +25,9 @@ export async function createSideBySideFrameImage(
   let originalMeta;
   try {
     originalMeta = await sharp(originalImagePath).metadata();
-  } catch (err: any) {
-    throw new Error(`Impossibile decodificare l'immagine con Sharp (${originalImagePath}): ${err.message}`);
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    throw new Error(`Impossibile decodificare l'immagine con Sharp (${originalImagePath}): ${errorMsg}`);
   }
   const width = Math.max(originalMeta.width || 640, 640);
   const height = Math.max(originalMeta.height || 480, 480);

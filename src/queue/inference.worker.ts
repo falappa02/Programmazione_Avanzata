@@ -4,6 +4,7 @@ import fs from 'fs';
 import { inferenceQueue, InferenceJobData } from './inference.queue';
 import { Processing, Content } from '../models';
 import { config } from '../config/env';
+import { IInferenceResult } from '../types';
 
 /**
  * Bull Queue Worker: Processes ML Inference Jobs asynchronously.
@@ -50,7 +51,7 @@ inferenceQueue.process(async (job) => {
     const scriptPath = path.resolve(process.cwd(), 'src', 'scripts', 'infer_yolo.py');
 
     // Run Python inference script
-    const resultJson: any = await new Promise((resolve, reject) => {
+    const resultJson: IInferenceResult = await new Promise((resolve, reject) => {
       execFile(
         config.pythonPath,
         [scriptPath, '--contents', contentsJson, '--output_dir', outputFolder, '--model', modelId],
@@ -83,11 +84,12 @@ inferenceQueue.process(async (job) => {
     await processing.save();
 
     console.log(`[BULL WORKER] Successfully completed processingId: ${processingId}`);
-  } catch (err: any) {
-    console.error(`[BULL WORKER FAILED] ProcessingId: ${processingId}`, err);
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    console.error(`[BULL WORKER FAILED] ProcessingId: ${processingId}`, error);
     processing.status = 'FAILED';
-    processing.errorType = err.name || 'INFERENCE_EXECUTION_ERROR';
-    processing.errorDetails = err.message || 'Errore imprevisto durante l\'esecuzione dell\'inferenza ML.';
+    processing.errorType = error.name || 'INFERENCE_EXECUTION_ERROR';
+    processing.errorDetails = error.message || 'Errore imprevisto durante l\'esecuzione dell\'inferenza ML.';
     await processing.save();
   }
 });

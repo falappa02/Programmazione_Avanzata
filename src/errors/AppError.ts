@@ -3,9 +3,9 @@ import { HttpStatus } from '../enums';
 export class AppError extends Error {
   public readonly statusCode: number;
   public readonly isOperational: boolean;
-  public readonly details: any;
+  public readonly details: unknown;
 
-  constructor(message: string, statusCode: number = HttpStatus.INTERNAL_SERVER_ERROR, details: any = null, isOperational: boolean = true) {
+  constructor(message: string, statusCode: number = HttpStatus.INTERNAL_SERVER_ERROR, details: unknown = null, isOperational: boolean = true) {
     super(message);
     this.statusCode = statusCode;
     this.isOperational = isOperational;

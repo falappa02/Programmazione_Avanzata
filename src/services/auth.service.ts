@@ -70,7 +70,7 @@ export class AuthService {
 
     return jwt.sign(payload, privateKey, {
       algorithm: config.jwt.algorithm,
-      expiresIn: config.jwt.expiresIn as any,
+      expiresIn: config.jwt.expiresIn as jwt.SignOptions['expiresIn'],
     });
   }
 }

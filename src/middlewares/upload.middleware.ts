@@ -1,7 +1,8 @@
 import multer from 'multer';
+import { Request } from 'express';
 import path from 'path';
 import crypto from 'crypto';
-import { BadRequestError } from '../errors/BadRequestError';
+import { ErrorFactory } from '../errors';
 
 const uploadDir = path.resolve(process.cwd(), 'uploads');
 
@@ -16,7 +17,7 @@ const storage = multer.diskStorage({
   },
 });
 
-const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   const allowedImageExts = ['.jpg', '.jpeg', '.png', '.webp'];
   const allowedVideoExts = ['.mp4'];
 
@@ -25,7 +26,7 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
   if (allowedImageExts.includes(ext) || allowedVideoExts.includes(ext)) {
     cb(null, true);
   } else {
-    cb(new BadRequestError(`Formato file non supportato (${ext}). Estensioni valide: .jpg, .jpeg, .png, .webp, .mp4`));
+    cb(ErrorFactory.badRequest(`Formato file non supportato (${ext}). Estensioni valide: .jpg, .jpeg, .png, .webp, .mp4`));
   }
 };
 

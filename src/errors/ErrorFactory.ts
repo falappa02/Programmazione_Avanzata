@@ -15,7 +15,7 @@ export class ErrorFactory {
   /**
    * Crea un'eccezione 400 Bad Request
    */
-  public static badRequest(message: string = 'Richiesta non valida.', details: any = null): BadRequestError {
+  public static badRequest(message: string = 'Richiesta non valida.', details: unknown = null): BadRequestError {
     return new BadRequestError(message, details);
   }
 
@@ -55,7 +55,7 @@ export class ErrorFactory {
   /**
    * Crea un'eccezione generica 500 Internal Server Error
    */
-  public static internal(message: string = 'Errore interno del server.', details: any = null): AppError {
+  public static internal(message: string = 'Errore interno del server.', details: unknown = null): AppError {
     return new AppError(message, 500, details);
   }
 }

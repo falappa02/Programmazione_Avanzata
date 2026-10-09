@@ -12,8 +12,9 @@ async function connectWithRetry(maxRetries = 10, delayMs = 3000) {
       await sequelize.sync({ alter: true });
       console.log('[DATABASE] Database synchronized successfully.');
       return;
-    } catch (err: any) {
-      console.warn(`[DATABASE WARNING] Connection attempt ${i} failed (${err.message}). Retrying in ${delayMs / 1000}s...`);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.warn(`[DATABASE WARNING] Connection attempt ${i} failed (${errMsg}). Retrying in ${delayMs / 1000}s...`);
       if (i === maxRetries) throw err;
       await new Promise((res) => setTimeout(res, delayMs));
     }

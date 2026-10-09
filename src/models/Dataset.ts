@@ -1,5 +1,6 @@
 import { Model, DataTypes } from 'sequelize';
 import { sequelize } from '../config/database';
+import type { Content } from './Content';
 
 export interface DatasetAttributes {
   id?: string;
@@ -19,6 +20,7 @@ export class Dataset extends Model<DatasetAttributes> implements DatasetAttribut
   declare isDeleted: boolean;
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
+  declare contents?: Content[];
 }
 
 Dataset.init(

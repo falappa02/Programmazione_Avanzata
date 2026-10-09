@@ -1,5 +1,6 @@
 import { Model, DataTypes } from 'sequelize';
 import { sequelize } from '../config/database';
+import { IInferenceResult } from '../types';
 
 export type ProcessingStatus = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'ABORTED';
 
@@ -12,7 +13,7 @@ export interface ProcessingAttributes {
   totalCost: number;
   errorType?: string | null;
   errorDetails?: string | null;
-  resultJson?: any;
+  resultJson?: IInferenceResult | null;
   outputFolderPath?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
@@ -27,7 +28,7 @@ export class Processing extends Model<ProcessingAttributes> implements Processin
   declare totalCost: number;
   declare errorType: string | null;
   declare errorDetails: string | null;
-  declare resultJson: any;
+  declare resultJson: IInferenceResult | null;
   declare outputFolderPath: string | null;
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
