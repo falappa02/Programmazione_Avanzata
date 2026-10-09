@@ -21,7 +21,7 @@
 
 ## Obiettivo del Progetto
 
-Il progetto implementa un backend RESTful ingegnerizzato in **TypeScript / Express** integrato con un motore di Machine Learning in **Python / PyTorch** per l'esecuzione dei modelli di Object Detection **Ultralytics YOLOv8 e YOLOv11**.
+Il progetto implementa un backend RESTful ingegnerizzato in **TypeScript / Express** integrato con un motore di Machine Learning in **Python / PyTorch** per l'esecuzione del modello di Object Detection **Ultralytics YOLOv11n**.
 
 Gli utenti autenticati possono gestire dataset multimediali (immagini fisse e sequenze video MP4), caricare contenuti e richiedere l'elaborazione di inferenza. Per evitare il blocco del server HTTP dovuto al carico computazionale della computer vision, l'esecuzione dei modelli è demandata a una **coda asincrona Bull su Redis**. I consumi e l'accesso alle risorse sono regolati da un'economia a token gestita mediante pattern architetturali.
 
@@ -59,13 +59,75 @@ Registra un nuovo utente nel sistema assegnandogli di default il ruolo `user` e 
   "password": "User123!"
 }
 ```
-> La password deve essere una stringa non vuota (almeno 6 caratteri).
+> La password deve contenere almeno 6 caratteri.
 
 **Errori possibili:**
 - `BadRequestError` — Dati della richiesta non validi (Zod validation)
 - `BadRequestError` — Utente con questa email già registrato
 
 **Successo:** `201 Created` — Ritorna `{ user, token }`
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Router as Router (/auth/register)
+    participant Validate as validate (Zod Middleware)
+    participant Controller as AuthController
+    participant Service as AuthService
+    participant UserMod as User (Sequelize)
+    participant DB as Database
+    participant Keys as RSA Key Manager
+    participant JWT as jsonwebtoken (RS256)
+
+    Client->>Router: POST /auth/register { email, password }
+    activate Router
+
+    Router->>Validate: validate(registerSchema)
+    activate Validate
+    alt Dati non validi (email non valida o password corta)
+        Validate-->>Client: HTTP 400 Bad Request
+    end
+    Validate->>Controller: register(req, res, next)
+    deactivate Validate
+    activate Controller
+
+    Controller->>Service: register(email, password, role)
+    activate Service
+
+    Service->>UserMod: findOne({ where: { email } })
+    activate UserMod
+    UserMod->>DB: SELECT * FROM users WHERE email = ?
+    DB-->>UserMod: Record utente o null
+    UserMod-->>Service: User | null
+    deactivate UserMod
+
+    alt Email già registrata
+        Service-->>Controller: throw BadRequestError("Email già registrata")
+        Controller-->>Client: HTTP 400 Bad Request
+    end
+
+    Note over Service,DB: Cifratura password e creazione utente
+    Service->>Service: bcrypt.hash(password, 10)
+    Service->>UserMod: create({ email, password: hash, role: 'user', tokens: 1000 })
+    activate UserMod
+    UserMod->>DB: INSERT INTO users (...)
+    DB-->>UserMod: User
+    UserMod-->>Service: User
+    deactivate UserMod
+
+    Service->>Keys: getRsaKeys()
+    Keys-->>Service: { privateKey, publicKey }
+    Service->>JWT: sign({ id, email, role }, privateKey, { algorithm: 'RS256' })
+    JWT-->>Service: token
+
+    Service-->>Controller: { user, token }
+    deactivate Service
+
+    Controller-->>Client: HTTP 201 Created { success: true, data: { user, token } }
+    deactivate Controller
+    deactivate Router
+```
 
 ---
 
@@ -87,7 +149,62 @@ Verifica le credenziali dell'utente tramite comparazione dell'hash Bcrypt. Se co
 
 **Successo:** `200 OK` — Ritorna `{ token, user: { id, email, role, tokens } }`
 
-![Diagramma di Sequenza Login RS256](docs/images/seq_auth_login.png)
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Client (Postman / Web)
+    participant AuthCtrl as AuthController
+    participant AuthSvc as AuthService
+    participant UserMod as User (Sequelize)
+    participant DB as Database (Postgres/SQLite)
+    participant Bcrypt as Bcrypt
+    participant Keys as RSA Key Manager
+    participant JWT as jsonwebtoken
+
+    Client->>AuthCtrl: POST /api/v1/auth/login {email, password}
+    activate AuthCtrl
+
+    AuthCtrl->>AuthSvc: login(email, password)
+    activate AuthSvc
+
+    AuthSvc->>UserMod: findOne({ where: { email } })
+    activate UserMod
+    UserMod->>DB: SELECT * FROM users WHERE email = ?
+    DB-->>UserMod: Record utente o null
+    UserMod-->>AuthSvc: user instance
+    deactivate UserMod
+
+    alt Utente non trovato
+        AuthSvc-->>AuthCtrl: throw UnauthorizedError("Credenziali non valide")
+        AuthCtrl-->>Client: HTTP 401 Unauthorized
+    end
+
+    AuthSvc->>Bcrypt: compare(password, user.password)
+    activate Bcrypt
+    Bcrypt-->>AuthSvc: isPasswordValid (true / false)
+    deactivate Bcrypt
+
+    alt Password errata
+        AuthSvc-->>AuthCtrl: throw UnauthorizedError("Credenziali non valide")
+        AuthCtrl-->>Client: HTTP 401 Unauthorized
+    end
+
+    AuthSvc->>Keys: getRsaKeys()
+    activate Keys
+    Keys-->>AuthSvc: { privateKey, publicKey }
+    deactivate Keys
+
+    AuthSvc->>JWT: sign(payload, privateKey, { algorithm: 'RS256' })
+    activate JWT
+    JWT-->>AuthSvc: jwt_token
+    deactivate JWT
+
+    AuthSvc-->>AuthCtrl: { token, user: { id, email, role, tokens } }
+    deactivate AuthSvc
+
+    AuthCtrl-->>Client: HTTP 200 OK { success: true, data: { token, user } }
+    deactivate AuthCtrl
+```
 
 ---
 
@@ -116,7 +233,7 @@ Restituisce le informazioni relative ai crediti token ancora a disposizione dell
 
 #### POST /api/v1/admin/recharge
 
-Aggiunge un importo arbitrario di token all'account di un utente identificato dalla sua email. Questa operazione è rigorosamente protetta dal middleware RBAC (`roleMiddleware('admin')`).
+Aggiunge un importo arbitrario di token all'account di un utente identificato dalla sua email. Questa operazione è protetta dalla catena di middleware RBAC (`authMiddleware` $\rightarrow$ `requireRole('admin')` $\rightarrow$ `validate(rechargeSchema)`).
 
 **Body richiesta:**
 ```json
@@ -128,11 +245,81 @@ Aggiunge un importo arbitrario di token all'account di un utente identificato da
 
 **Errori possibili:**
 - `UnauthorizedError` — Token mancante o non valido
-- `ForbiddenError` — Utente autenticato non possiede il ruolo `admin` (403 Forbidden)
+- `ForbiddenError` — Utente autenticato non possiede il ruolo `admin` (HTTP 403)
 - `BadRequestError` — Credito specificato non valido (deve essere un numero positivo)
 - `NotFoundError` — Utente destinatario non trovato
 
 **Successo:** `200 OK` — Ritorna `{ email, previousTokens, newTokens }`
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Router as Router (/admin/recharge)
+    participant Auth as authMiddleware (JWT RS256)
+    participant Role as requireRole('admin')
+    participant Validate as validate (Zod)
+    participant Controller as UserController
+    participant Service as UserService
+    participant UserMod as User (Sequelize)
+    participant DB as Database
+
+    Client->>Router: POST /admin/recharge { email, credit }
+    activate Router
+
+    rect rgb(255, 240, 240)
+        note over Auth,Validate: Chain of Responsibility (Middleware Pipeline)
+        Router->>Auth: authMiddleware(req, res, next)
+        alt Token mancante o non valido
+            Auth-->>Client: HTTP 401 Unauthorized
+        end
+        Auth-->>Router: req.user
+
+        Router->>Role: requireRole('admin')
+        alt req.user.role != 'admin'
+            Role-->>Client: HTTP 403 Forbidden
+        end
+        Role-->>Router: next()
+
+        Router->>Validate: validate(rechargeSchema)
+        alt email non valida o credit non positivo
+            Validate-->>Client: HTTP 400 Bad Request
+        end
+        Validate-->>Router: next()
+    end
+
+    Router->>Controller: rechargeCredit(req, res, next)
+    activate Controller
+    Controller->>Service: rechargeUserCreditByEmail(email, credit)
+    activate Service
+
+    Service->>UserMod: findOne({ where: { email } })
+    activate UserMod
+    UserMod->>DB: SELECT * FROM users WHERE email = ?
+    DB-->>UserMod: User
+    UserMod-->>Service: User
+    deactivate UserMod
+
+    alt Utente non trovato
+        Service-->>Controller: throw NotFoundError("Utente non trovato")
+        Controller-->>Client: HTTP 404 Not Found
+    end
+
+    Note over Service,DB: Aggiornamento saldo token
+    Service->>UserMod: user.tokens += credit; user.save()
+    activate UserMod
+    UserMod->>DB: UPDATE users SET tokens = ? WHERE id = ?
+    DB-->>UserMod: ok
+    UserMod-->>Service: user
+    deactivate UserMod
+
+    Service-->>Controller: { email, previousTokens, newTokens }
+    deactivate Service
+
+    Controller-->>Client: HTTP 200 OK { success: true, message: "Ricarica effettuata", data: {...} }
+    deactivate Controller
+    deactivate Router
+```
 
 ---
 
@@ -242,7 +429,79 @@ Il sistema:
 
 **Successo:** `201 Created` — Ritorna `{ id, datasetId, type, fileSizeKb, frameCount, tokenCost, filePath }`
 
-![Diagramma di Sequenza Upload Content](docs/images/seq_upload_content.png)
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Client (Postman)
+    participant AuthMid as AuthMiddleware
+    participant UploadMid as Multer (Upload)
+    participant ContentCtrl as ContentController
+    participant ContentSvc as ContentService
+    participant MediaUtil as MediaUtils (ffprobe/sharp)
+    participant Factory as CostStrategyFactory
+    participant Strategy as ICostStrategy
+    participant UserMod as User (Sequelize)
+    participant ContentMod as Content (Sequelize)
+    participant DB as Database
+
+    Client->>AuthMid: POST /api/v1/datasets/:id/content (multipart/form-data)
+    activate AuthMid
+    Note over AuthMid: Verifica firma RS256 con Public Key
+    AuthMid->>UploadMid: next() con req.user
+    deactivate AuthMid
+
+    activate UploadMid
+    UploadMid->>UploadMid: Salva file temporaneo in /uploads
+    UploadMid->>ContentCtrl: uploadContent(req, res)
+    deactivate UploadMid
+
+    activate ContentCtrl
+    ContentCtrl->>ContentSvc: addContentToDataset(userId, datasetId, file)
+    activate ContentSvc
+
+    ContentSvc->>MediaUtil: getMediaMetadata(filePath, type)
+    activate MediaUtil
+    MediaUtil-->>ContentSvc: { fileSizeKb, frameCount }
+    deactivate MediaUtil
+
+    ContentSvc->>Factory: getStrategy(type: 'image' | 'video')
+    activate Factory
+    Factory-->>ContentSvc: istanza ImageCostStrategy / VideoCostStrategy
+    deactivate Factory
+
+    ContentSvc->>Strategy: calculateUploadCost(fileSizeKb, frameCount)
+    activate Strategy
+    Strategy-->>ContentSvc: tokenCost
+    deactivate Strategy
+
+    ContentSvc->>UserMod: findByPk(userId)
+    activate UserMod
+    UserMod->>DB: SELECT tokens FROM users WHERE id = ?
+    DB-->>UserMod: Dati utente
+    UserMod-->>ContentSvc: user
+    deactivate UserMod
+
+    alt Credito insufficiente (user.tokens < tokenCost)
+        ContentSvc->>ContentSvc: unlinkSync(tempFile)
+        ContentSvc-->>ContentCtrl: throw InsufficientCreditError
+        ContentCtrl-->>Client: HTTP 400 Bad Request
+    end
+
+    Note over ContentSvc: user.tokens = user.tokens - tokenCost
+    ContentSvc->>UserMod: save()
+    ContentSvc->>ContentMod: create({ datasetId, type, filePath, tokenCost, ... })
+    activate ContentMod
+    ContentMod->>DB: INSERT INTO contents ...
+    DB-->>ContentMod: Record creato
+    ContentMod-->>ContentSvc: newContent
+    deactivate ContentMod
+
+    ContentSvc-->>ContentCtrl: newContent
+    deactivate ContentSvc
+
+    ContentCtrl-->>Client: HTTP 201 Created { success: true, data: newContent }
+    deactivate ContentCtrl
+```
 
 ---
 
@@ -291,7 +550,72 @@ Avvia l'inferenza su tutti i contenuti del dataset selezionato:
 
 **Successo:** `202 Accepted` — Ritorna `{ processingId, status: "PENDING", totalCost }`
 
-![Diagramma di Sequenza Inferenza e Coda Bull](docs/images/seq_inference_queue.png)
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Client
+    participant InfCtrl as InferenceController
+    participant InfSvc as InferenceService
+    participant Queue as Bull Queue (Redis)
+    participant Worker as Bull Worker
+    participant Python as infer_yolo.py (Subprocess)
+    participant DB as PostgreSQL / SQLite
+
+    %% Fase 1: Richiesta HTTP Sincrona
+    rect rgb(240, 248, 255)
+    Note over Client, InfCtrl: FASE 1: Richiesta e Accodamento Sincrono (Non-Blocking)
+    Client->>InfCtrl: POST /api/v1/inference { datasetId, modelId: "yolov11n" }
+    activate InfCtrl
+
+    InfCtrl->>InfSvc: triggerInference(userId, datasetId, modelId)
+    activate InfSvc
+
+    InfSvc->>DB: Controlla contenuti e calcola costo totale inferenza
+    InfSvc->>DB: Verifica e scala crediti utente (user.tokens - totalCost)
+
+    InfSvc->>DB: INSERT INTO processings (status = 'PENDING')
+    DB-->>InfSvc: processingRecord (id: uuid)
+
+    InfSvc->>Queue: add({ processingId, datasetId, modelId })
+    activate Queue
+    Queue-->>InfSvc: Job accodato in Redis
+    deactivate Queue
+
+    InfSvc-->>InfCtrl: { processingId, status: 'PENDING' }
+    deactivate InfSvc
+
+    InfCtrl-->>Client: HTTP 202 Accepted { success: true, data: { processingId, status: 'PENDING' } }
+    deactivate InfCtrl
+    end
+
+    %% Fase 2: Elaborazione Asincrona in Background
+    rect rgb(255, 250, 240)
+    Note over Queue, Python: FASE 2: Esecuzione Asincrona in Background
+    Queue->>Worker: Estrae prossimo Job FIFO
+    activate Worker
+
+    Worker->>DB: UPDATE processings SET status = 'RUNNING' WHERE id = processingId
+
+    Worker->>Python: execFile('python', ['infer_yolo.py', '--contents', ..., '--output_dir', ...])
+    activate Python
+    Note over Python: Carica pesi YOLOv11n ed esegue Object Detection
+    Python-->>Worker: JSON con bounding box, confidenze e immagini salvate
+    deactivate Python
+
+    Worker->>DB: UPDATE processings SET status = 'COMPLETED', resultJson = ..., outputFolderPath = ...
+    Worker-->>Queue: Job completato
+    deactivate Worker
+    end
+
+    %% Fase 3: Polling del Client
+    rect rgb(245, 255, 245)
+    Note over Client, InfCtrl: FASE 3: Polling dello Stato da parte del Client
+    Client->>InfCtrl: GET /api/v1/inference/:id/status
+    InfCtrl->>DB: SELECT * FROM processings WHERE id = ?
+    DB-->>InfCtrl: { status: 'COMPLETED', resultJson: { ... } }
+    InfCtrl-->>Client: HTTP 200 OK { success: true, data: { status: 'COMPLETED', ... } }
+    end
+```
 
 ---
 
@@ -320,6 +644,47 @@ Restituisce in streaming binario un'immagine composita affiancata (*Side-by-Side
 - `contentId` — *(Opzionale)* Identificativo del contenuto specifico nel dataset
 
 **Successo:** `200 OK` — Buffer binario immagine con header `Content-Type: image/png`
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Client / Postman
+    participant InfCtrl as InferenceController
+    participant InfSvc as InferenceService
+    participant DB as Database
+    participant FS as File System
+    participant Sharp as Sharp / ImageCombiner
+
+    Client->>InfCtrl: GET /api/v1/inference/:id/frame/0
+    activate InfCtrl
+
+    InfCtrl->>InfSvc: getFrameVisualization(userId, processingId, frameIndex=0)
+    activate InfSvc
+
+    InfSvc->>DB: findOne Processing con id e userId
+    DB-->>InfSvc: processing (resultJson con coordinate e path)
+
+    alt Elaborazione non ancora completata
+        InfSvc-->>InfCtrl: throw BadRequestError("Inferenza non ancora completata")
+        InfCtrl-->>Client: HTTP 400 Bad Request
+    end
+
+    InfSvc->>FS: Legge immagine/frame originale
+    InfSvc->>FS: Legge frame elaborato con bounding box
+
+    InfSvc->>Sharp: combineImagesSideBySide(originalBuffer, annotatedBuffer)
+    activate Sharp
+    Note over Sharp: Concatena le due immagini affiancate (Left: Originale, Right: YOLO BBox)
+    Sharp-->>InfSvc: imageBuffer (PNG)
+    deactivate Sharp
+
+    InfSvc-->>InfCtrl: imageBuffer
+    deactivate InfSvc
+
+    InfCtrl->>InfCtrl: res.setHeader('Content-Type', 'image/png')
+    InfCtrl-->>Client: HTTP 200 OK [Binary Image Buffer PNG]
+    deactivate InfCtrl
+```
 
 ---
 
@@ -416,4 +781,3 @@ Verifica la corretta gestione dei middleware di autenticazione e di formattazion
 ## Autore
 
 * **Gabriele Gaeta** ([GitHub](https://github.com/Gabrioooo))
-
