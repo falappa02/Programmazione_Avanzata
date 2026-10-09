@@ -306,7 +306,7 @@ sequenceDiagram
     end
 
     Note over Service,DB: Aggiornamento saldo token
-    Service->>UserMod: user.tokens += credit; user.save()
+    Service->>UserMod: user.tokens += credit, user.save()
     activate UserMod
     UserMod->>DB: UPDATE users SET tokens = ? WHERE id = ?
     DB-->>UserMod: ok
