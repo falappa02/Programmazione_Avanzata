@@ -6,7 +6,13 @@ import { config } from '../config/env';
 import { ErrorFactory } from '../errors';
 
 export class AuthService {
-  //Registra utente con credito 1000
+  /**
+   * Registrazione nuovo utente:
+   * - Verifica unicità dell'indirizzo email.
+   * - Hashing della password tramite bcrypt con salt round = 10 (protezione contro attacchi rainbow table).
+   * - Assegnazione del credito iniziale (default 1000.0 token).
+   * - Generazione del token JWT RS256 asimmetrico.
+   */
   public async register(email: string, password: string, role: 'admin' | 'user' = 'user', initialTokens: number = 1000.0) {
     const existing = await User.findOne({ where: { email } });
     if (existing) {
@@ -33,7 +39,12 @@ export class AuthService {
     };
   }
 
-  //Login dell'utente
+  /**
+   * Autenticazione (Login) dell'utente:
+   * - Ricerca dell'utente tramite email.
+   * - Confronto sicuro della password tramite bcrypt.compare (immune da timing attacks).
+   * - Rilascio del token JWT firmato con chiave privata RSA.
+   */
   public async login(email: string, password: string) {
     const user = await User.findOne({ where: { email } });
     if (!user) {
@@ -57,11 +68,14 @@ export class AuthService {
     };
   }
 
-  //Genera token privato
+  /**
+   * Generazione Token JWT con Crittografia Asimmetrica (Algoritmo RS256).
+   * Il token viene firmato esclusivamente con la chiave privata del server.
+   * Qualsiasi client o servizio ricevente potrà verificarne la firma con la sola chiave pubblica.
+   */
   private generateJwtToken(user: User): string {
     const { privateKey } = getRsaKeys();
 
-    
     const payload = {
       id: user.id,
       email: user.email,

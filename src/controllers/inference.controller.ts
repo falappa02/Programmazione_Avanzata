@@ -3,6 +3,10 @@ import { inferenceService } from '../services/inference.service';
 import { HttpStatus } from '../enums';
 
 export class InferenceController {
+  /**
+   * GET /inference/models
+   * Restituisce il catalogo dei modelli YOLO supportati e le loro caratteristiche.
+   */
   public async getAvailableModels(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const data = inferenceService.getAvailableModels();
@@ -15,6 +19,11 @@ export class InferenceController {
     }
   }
 
+  /**
+   * POST /inference
+   * Avvia il processamento asincrono. Risponde con 202 ACCEPTED (richiesta presa in carico ed accodata).
+   * Usa il non-null assertion operator (!) su req.user! garantito dal middleware authMiddleware.
+   */
   public async trigger(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.id;
@@ -30,6 +39,11 @@ export class InferenceController {
     }
   }
 
+  /**
+   * GET /inference/:id/status
+   * Recupera lo stato di elaborazione (PENDING, RUNNING, COMPLETED, FAILED, ABORTED)
+   * e il JSON dei risultati dettagliati se COMPLETED.
+   */
   public async getStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.id;
@@ -44,6 +58,10 @@ export class InferenceController {
     }
   }
 
+  /**
+   * GET /inference/:id/frame/:frameIndex
+   * Restituisce il rendering grafico del frame side-by-side con bboxes (Content-Type: image/png).
+   */
   public async getFrameVisualization(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.id;

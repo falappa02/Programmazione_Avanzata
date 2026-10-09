@@ -1,9 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
 import { AnyZodObject, ZodError } from 'zod';
-import { BadRequestError } from '../errors/BadRequestError';
+import { ErrorFactory } from '../errors';
 
-// Middleware: Validazione input usando zod per body query e params
- 
+/**
+ * Middleware di Validazione degli Input tramite schemi Zod.
+ * 
+ * Concetto d'esame (Type Erasure & Validazione Runtime):
+ * In TypeScript, tutti i tipi e le interfacce vengono eliminati in fase di compilazione (type erasure).
+ * I dati provenienti dall'esterno (body JSON, query string, parametri URL) non sono garantiti a runtime.
+ * Usare Zod permette di convalidare la struttura dei dati a runtime prima che raggiungano i Controller,
+ * proteggendo l'applicazione da input malformati o attacchi di injection.
+ */
 export function validate(schema: AnyZodObject) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -19,7 +26,7 @@ export function validate(schema: AnyZodObject) {
           field: e.path.join('.').replace(/^(body|query|params)\./, ''),
           message: e.message,
         }));
-        next(new BadRequestError('Dati di richiesta non validi.', formattedErrors));
+        next(ErrorFactory.badRequest('Dati di richiesta non validi.', formattedErrors));
       } else {
         next(error);
       }

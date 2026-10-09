@@ -7,8 +7,13 @@ import fs from 'fs';
 
 export class ContentService {
   /**
-   * Upload image or video content to a specific dataset.
-   * Calculates cost via CostStrategy, checks user token balance, deducts tokens, and saves content.
+   * Carica un file multimediale (immagine o video) all'interno di un dataset.
+   * Flusso di esecuzione:
+   * 1. Verifica esistenza e appartenenza del dataset all'utente.
+   * 2. Estrazione metadati (dimensione in KB, numero di frame se video con ffprobe).
+   * 3. Calcolo del costo in token tramite Strategy Pattern (ImageCostStrategy / VideoCostStrategy).
+   * 4. Verifica disponibilità crediti (abort e cleanup file se insufficienti).
+   * 5. Scalo dei token e salvataggio del record nel database.
    */
   public async addContentToDataset(
     userId: string,
@@ -24,7 +29,7 @@ export class ContentService {
     });
 
     if (!dataset) {
-      // Clean up uploaded temp file if dataset is not found
+      // Pulizia del file temporaneo su disco in caso di dataset inesistente
       if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
       throw ErrorFactory.notFound('Dataset', datasetId);
     }
@@ -32,14 +37,14 @@ export class ContentService {
     const ext = path.extname(file.originalname).toLowerCase();
     const type: 'image' | 'video' = ['.mp4'].includes(ext) ? 'video' : 'image';
 
-    // Inspect media metadata (file size in KB, frame count for video)
+    // Ispezione metadati multimediali (peso in KB, conteggio frame per video)
     const mediaMeta = await getMediaMetadata(file.path, type);
 
-    // Calculate token cost using Strategy Pattern
+    // Calcolo costo in token tramite Strategy Pattern
     const costStrategy = CostStrategyFactory.getStrategy(type);
     const tokenCost = costStrategy.calculateUploadCost(mediaMeta.fileSizeKb, mediaMeta.frameCount);
 
-    // Fetch user and check credit
+    // Controllo disponibilità token dell'utente
     const user = await User.findByPk(userId);
     if (!user) {
       if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
@@ -47,16 +52,16 @@ export class ContentService {
     }
 
     if (user.tokens < tokenCost) {
-      // Clean up file if tokens are insufficient
+      // Rimozione file da disco se i token sono insufficienti per evitare accumulo di orfani
       if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
       throw ErrorFactory.insufficientCredit(tokenCost, user.tokens);
     }
 
-    // Deduct user token credit
+    // Scalo dei crediti token all'utente
     user.tokens = Math.round((user.tokens - tokenCost) * 100) / 100;
     await user.save();
 
-    // Create content record
+    // Creazione del record Content associato al Dataset
     const content = await Content.create({
       datasetId: dataset.id,
       type,

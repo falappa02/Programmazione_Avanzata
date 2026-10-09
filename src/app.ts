@@ -2,42 +2,50 @@ import express from 'express';
 import cors from 'cors';
 import routes from './routes';
 import { errorHandlerMiddleware } from './middlewares/error.middleware';
-import { NotFoundError } from './errors/NotFoundError';
+import { ErrorFactory } from './errors';
 import { HttpStatus } from './enums';
 
+// Inizializzazione applicazione Express
 const app = express();
 
-// Middleware
+// --- 1. MIDDLEWARE GLOBALI (Chain of Responsibility) ---
+// Abilita CORS per permettere chiamate da qualsiasi origine/frontend
 app.use(cors());
+// Parsing del body JSON per le richieste POST/PUT/PATCH
 app.use(express.json());
+// Parsing dei dati inviati via form-urlencoded
 app.use(express.urlencoded({ extended: true }));
 
-// Root Endpoint
+// --- 2. ROTTE DI BASE ---
+// Endpoint di benvenuto con info di riepilogo
 app.get('/', (req, res) => {
   res.status(HttpStatus.OK).json({
     success: true,
-    message: 'Benvenuto nelle API Backend di Inferenza YOLOv11n (Programmazione Avanzata - UnivPM)',
+    message: 'Benvenuto nelle API Backend di Inferenza YOLO (Programmazione Avanzata - UnivPM)',
     version: '1.0.0',
-    documentation: 'Vedi README.md per l\'elenco completo delle rotte API.',
+    documentation: 'Vedi documentazione per l\'elenco completo delle rotte API.',
     healthCheck: '/health',
     apiPrefix: '/api/v1',
   });
 });
 
-// Health Check Endpoint
+// Endpoint di Health Check per monitorare lo stato del backend
 app.get('/health', (req, res) => {
-  res.status(HttpStatus.OK).json({ status: 'OK', message: 'YOLO Inference API Backend Server is healthy.' });
+  res.status(HttpStatus.OK).json({ status: 'OK', message: 'Il server backend YOLO è attivo e pronto.' });
 });
 
-// API Routes Aggregator
+// --- 3. ROTTE API PRINCIPALI ---
+// Tutte le rotte applicative sono montate con prefisso /api/v1
 app.use('/api/v1', routes);
 
-// 404 Route Handler
+// --- 4. GESTIONE ROTTE NON TROVATE (404) ---
+// Intercetta qualsiasi richiesta a un URL non definito
 app.use((req, res, next) => {
-  next(new NotFoundError(`Rotta non trovata: ${req.method} ${req.originalUrl}`));
+  next(ErrorFactory.notFound('Rotta', `${req.method} ${req.originalUrl}`));
 });
 
-
+// --- 5. GESTORE DEGLI ERRORI CENTRALIZZATO ---
+// Deve essere registrato per ULTIMO nella catena Express (4 parametri: err, req, res, next)
 app.use(errorHandlerMiddleware);
 
 export default app;

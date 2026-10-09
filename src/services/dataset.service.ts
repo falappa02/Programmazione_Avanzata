@@ -4,10 +4,11 @@ import { Op } from 'sequelize';
 
 export class DatasetService {
   /**
-   * Create a new empty dataset for user.
+   * Crea un nuovo dataset vuoto per l'utente autenticato.
+   * Utilizza la struttura dati Set<string> per eliminare eventuali tag duplicati.
    */
   public async createDataset(userId: string, name: string, tags: string[] = []) {
-    // Check if user already has an active dataset with the same name
+    // Verifica che non esista già un dataset attivo con lo stesso nome per l'utente
     const existing = await Dataset.findOne({
       where: {
         userId,
@@ -20,10 +21,13 @@ export class DatasetService {
       throw ErrorFactory.badRequest(`Un dataset denominato '${name}' esiste già per questo utente.`);
     }
 
+    // Utilizzo di Set<string> per garantire l'unicità dei tag (domanda orale su Set)
+    const uniqueTags = Array.from(new Set<string>(tags));
+
     const dataset = await Dataset.create({
       userId,
       name,
-      tags,
+      tags: uniqueTags,
       isDeleted: false,
     });
 
@@ -31,7 +35,7 @@ export class DatasetService {
   }
 
   /**
-   * Get active dataset list for user.
+   * Recupera tutti i dataset attivi (non eliminati) dell'utente con i rispettivi contenuti.
    */
   public async getUserDatasets(userId: string) {
     const datasets = await Dataset.findAll({
@@ -53,7 +57,7 @@ export class DatasetService {
   }
 
   /**
-   * Update dataset metadata (name, tags), checking name non-overlap among user's projects.
+   * Aggiorna i metadati del dataset (nome e/o tag), validando l'univocità del nome.
    */
   public async updateDataset(userId: string, datasetId: string, name?: string, tags?: string[]) {
     const dataset = await Dataset.findOne({
@@ -82,7 +86,8 @@ export class DatasetService {
     }
 
     if (tags !== undefined) {
-      dataset.tags = tags;
+      // Garantisce unicità dei tag tramite Set<string>
+      dataset.tags = Array.from(new Set<string>(tags));
     }
 
     await dataset.save();
@@ -90,7 +95,7 @@ export class DatasetService {
   }
 
   /**
-   * Soft delete (logical deletion) of a dataset.
+   * Cancellazione logica (Soft Delete) del dataset per preservare la tracciabilità dei dati.
    */
   public async deleteDataset(userId: string, datasetId: string) {
     const dataset = await Dataset.findOne({

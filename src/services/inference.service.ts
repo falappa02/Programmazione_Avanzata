@@ -19,7 +19,8 @@ import {
 
 export class InferenceService {
   /**
-   * Get list of supported YOLO models and configuration metadata.
+   * Restituisce l'elenco dei modelli YOLO supportati (v8 e v11, taglie nano, small, medium)
+   * e il modello predefinito configurato a livello di sistema.
    */
   public getAvailableModels() {
     return {
@@ -30,9 +31,11 @@ export class InferenceService {
   }
 
   /**
-   * Aziona ML sul dataset
-   * Calcola i token (4 token/immagine, 1.75 token/frame video).
-   * Verifica i crediti e abortisce se non sono abbastanza
+   * Avvia il flusso di elaborazione inferenza ML su un dataset:
+   * 1. Valida il modello richiesto (modelId).
+   * 2. Recupera i contenuti del dataset e calcola il costo stimato in token (reduce + Strategy Pattern).
+   * 3. Verifica crediti residui utente: se insufficienti, salva record 'ABORTED' e lancia InsufficientCreditError.
+   * 4. Se crediti sufficienti, scala i token, crea record 'PENDING' e inserisce il job nella Bull Queue (Redis).
    */
   public async triggerInference(userId: string, datasetId: string, modelId: string = DEFAULT_MODEL_ID) {
     if (!isValidModelId(modelId)) {
@@ -120,7 +123,9 @@ export class InferenceService {
   }
 
   /**
-   * Get processing status and result JSON if COMPLETED.
+   * Recupera lo stato di avanzamento del task di inferenza.
+   * Conforme al requisito d'esame: se lo stato è COMPLETED, include l'intero risultato
+   * dell'inferenza ML sotto forma di oggetto JSON con detections, frame e bounding box.
    */
   public async getProcessingStatus(userId: string, processingId: string) {
     const processing = await Processing.findOne({
@@ -159,7 +164,8 @@ export class InferenceService {
   }
 
   /**
-   * Generate split/side-by-side visualization frame (left original, right annotated with bboxes & classes).
+   * Genera un'immagine combinata side-by-side (a sinistra l'originale, a destra l'annotata con bounding box e classi).
+   * Restituisce un buffer binario JPEG (Content-Type: image/jpeg).
    */
   public async getFrameVisualization(
     userId: string,

@@ -2,7 +2,9 @@ import { User } from '../models/User';
 import { ErrorFactory } from '../errors';
 
 export class UserService {
-  //Get credito
+  /**
+   * Recupera il saldo crediti token dell'utente specificato tramite ID.
+   */
   public async getUserCredit(userId: string) {
     const user = await User.findByPk(userId);
     if (!user) {
@@ -15,7 +17,10 @@ export class UserService {
     };
   }
 
-  //Ricarica Admin tramite mail
+  /**
+   * Operazione riservata agli Amministratori:
+   * Ricarica il credito token di un utente cercandolo tramite indirizzo email.
+   */
   public async rechargeUserCreditByEmail(email: string, newCredit: number) {
     if (newCredit < 0) {
       throw ErrorFactory.badRequest('Il credito ricaricato deve essere un valore positivo.');
