@@ -780,4 +780,6 @@ Verifica la corretta gestione dei middleware di autenticazione e di formattazion
 
 ## Autore
 
-* **Gabriele Gaeta** ([GitHub](https://github.com/Gabrioooo))
+* **Filippo Marchegiani** ([GitHub](https://github.com/Gabrioooo))
+* **Simone Giano**
+* **Daniele Gallo**
