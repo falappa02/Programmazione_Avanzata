@@ -5,6 +5,7 @@
 | Sezione | Contenuto |
 | :--- | :--- |
 | [Obiettivo del Progetto](#obiettivo-del-progetto) | Scopo del backend e funzionalità principali |
+| [Diagramma dei Casi d'Uso](#diagramma-dei-casi-duso) | Diagramma UML degli attori (Ospite, Utente, Admin) e funzionalità |
 | [Rotte Disponibili](#rotte-disponibili) | Panoramica completa degli endpoint REST |
 | ↳ [Autenticazione](#autenticazione) | Registrazione e login con JWT RS256 |
 | ↳ [Utenti & Amministrazione](#utenti--amministrazione) | Visualizzazione e ricarica crediti (RBAC) |
@@ -32,6 +33,100 @@ Le operazioni principali sono:
 * **Upload multimediale con Strategy Pattern**: calcolo polimorfico dei costi in crediti per immagini e video MP4 multiframe.
 * **Pipeline di Inferenza asincrona non-bloccante**: accodamento immediato con HTTP `202 Accepted`, elaborazione FIFO tramite worker dedicato e polling dello stato.
 * **Ispezione visuale Side-by-Side**: generazione e streaming di immagini composite PNG che affiancano il frame originale a quello annotato con i Bounding Box di YOLO.
+
+---
+
+## Diagramma dei Casi d'Uso
+
+Il seguente **Diagramma UML dei Casi d'Uso** sintetizza le interazioni tra gli attori e il sistema backend, organizzato rigorosamente secondo i tre livelli di privilegio: **Utente non autenticato**, **Utente autenticato** e **Amministratore (Admin)**.
+
+```mermaid
+flowchart LR
+    %% Attori del Sistema
+    subgraph Attori [" Attori del Sistema "]
+        direction TB
+        Guest[" Utente non autenticato "]
+        User[" Utente autenticato "]
+        Admin[" Amministratore (Admin) "]
+    end
+
+    %% Confini del Sistema Backend
+    subgraph Sistema [" Sistema Backend YOLO (API REST) "]
+        direction TB
+
+        %% 1. Funzionalità Utente non autenticato
+        subgraph AreaGuest [" 1. Area Pubblica / Accesso "]
+            UC_Reg(["Registrazione account (POST /auth/register)"]):::uc
+            UC_Log(["Login credenziali & JWT RS256 (POST /auth/login)"]):::uc
+            UC_Mod(["Consultazione modelli YOLO (GET /inference/models)"]):::uc
+            UC_Hlt(["Verifica disponibilità servizio (GET /health)"]):::uc
+        end
+
+        %% 2. Funzionalità Utente autenticato
+        subgraph AreaUser [" 2. Area Utente Autenticato (JWT RS256) "]
+            UC_Crd(["Visualizzazione credito residuo (GET /users/credit)"]):::uc
+            UC_CDs(["Creazione dataset con tag (POST /datasets)"]):::uc
+            UC_LDs(["Consultazione lista dataset (GET /datasets)"]):::uc
+            UC_UDs(["Modifica dataset con controllo univocità (PUT /datasets/:id)"]):::uc
+            UC_DDs(["Cancellazione logica soft-delete (DELETE /datasets/:id)"]):::uc
+            UC_UpI(["Upload immagine con costo fisso 0.25 (POST /datasets/:id/content)"]):::uc
+            UC_UpV(["Upload video MP4 con costo 0.08/KB (POST /datasets/:id/content)"]):::uc
+            UC_Trg(["Richiesta inferenza asincrona 202 Accepted (POST /inference)"]):::uc
+            UC_Sts(["Polling avanzamento e risultato JSON (GET /inference/:id/status)"]):::uc
+            UC_Frm(["Visualizzazione frame side-by-side (GET /inference/:id/frame/:index)"]):::uc
+        end
+
+        %% 3. Funzionalità Amministratore
+        subgraph AreaAdmin [" 3. Area Amministrazione (RBAC - Solo Admin) "]
+            UC_Rch(["Ricarica crediti utente via email (POST /admin/recharge)"]):::uc
+        end
+    end
+
+    %% Relazioni Utente non autenticato
+    Guest --> UC_Reg
+    Guest --> UC_Log
+    Guest --> UC_Mod
+    Guest --> UC_Hlt
+
+    %% Relazioni Utente autenticato
+    User --> UC_Crd
+    User --> UC_CDs
+    User --> UC_LDs
+    User --> UC_UDs
+    User --> UC_DDs
+    User --> UC_UpI
+    User --> UC_UpV
+    User --> UC_Trg
+    User --> UC_Sts
+    User --> UC_Frm
+
+    %% Ereditarietà e Relazioni Admin
+    Admin -.->|eredita tutti i permessi| User
+    Admin --> UC_Rch
+
+    classDef uc fill:#f8f9fa,stroke:#2c3e50,stroke-width:1.5px,color:#2c3e50,font-size:11px;
+    classDef default font-family:sans-serif;
+```
+
+### Dettaglio degli Attori e Ruoli
+
+1. **Utente non autenticato**:
+   - Accesso libero senza intestazione di autenticazione.
+   - Può registrarsi fornendo email e password valida (`POST /auth/register`), ricevendo **1000.0 token** di benvenuto.
+   - Può autenticarsi (`POST /auth/login`) ottenendo un token JWT crittografato e firmato asimmetricamente con chiave privata RSA (**RS256**).
+   - Può consultare la lista dei modelli YOLOv11/YOLOv8 supportati dal motore di computer vision (`GET /inference/models`) e verificare la disponibilità del server (`GET /health`).
+
+2. **Utente autenticato** (`user`):
+   - Accesso protetto da `authMiddleware` con validazione della firma crittografica RS256 e verifica che il saldo crediti non sia esaurito (`tokens > 0`). Se i crediti sono terminati, l'accesso viene respinto con HTTP `401 Unauthorized`.
+   - Consulta il saldo dei propri token residui (`GET /users/credit`).
+   - Gestisce i propri dataset: creazione con assegnazione di tag (`POST /datasets`), lettura dei soli dataset attivi (`GET /datasets`), modifica con verifica di non-sovrapposizione del nome con altri dataset del medesimo utente (`PUT /datasets/:id`), cancellazione logica (`DELETE /datasets/:id`) per preservare la cronologia.
+   - Carica file multimediali (`POST /datasets/:id/content`): immagini fisse (0.25 token) o video MP4 multiframe (0.08 token/KB). Il costo è calcolato polimorficamente via **Strategy Pattern** e scalato preventivamente dopo verifica di copertura.
+   - Gestisce la pipeline di Machine Learning: avvio asincrono dell'inferenza con accodamento Redis/Bull (`POST /inference`), monitoraggio degli stati (`PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `ABORTED`) con ricezione del JSON dei Bounding Box (`GET /inference/:id/status`) e visualizzazione visiva affiancata del frame originale vs annotato (`GET /inference/:id/frame/:frameIndex`).
+
+3. **Amministratore** (`admin`):
+   - Possiede tutti i permessi dell'utente standard per effetto del modello **RBAC** (*Role-Based Access Control*).
+   - Ha accesso esclusivo alla rotta protetta dal middleware `requireRole('admin')`:
+     - Ricarica arbitraria del credito token di qualsiasi utente specificandone l'email (`POST /admin/recharge`).
 
 ---
 
