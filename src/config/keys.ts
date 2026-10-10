@@ -33,8 +33,11 @@ export function getRsaKeys(): { privateKey: string; publicKey: string } {
     console.log('[KEYS] RSA key pair successfully generated and saved.');
   }
 
-  const privateKey = process.env.JWT_PRIVATE_KEY || (fs.existsSync(privateKeyPath) ? fs.readFileSync(privateKeyPath, 'utf8') : '');
-  const publicKey = process.env.JWT_PUBLIC_KEY || (fs.existsSync(publicKeyPath) ? fs.readFileSync(publicKeyPath, 'utf8') : '');
+  const envPrivateKey = process.env.JWT_PRIVATE_KEY ? process.env.JWT_PRIVATE_KEY.replace(/\\n/g, '\n') : '';
+  const envPublicKey = process.env.JWT_PUBLIC_KEY ? process.env.JWT_PUBLIC_KEY.replace(/\\n/g, '\n') : '';
+
+  const privateKey = envPrivateKey || (fs.existsSync(privateKeyPath) ? fs.readFileSync(privateKeyPath, 'utf8') : '');
+  const publicKey = envPublicKey || (fs.existsSync(publicKeyPath) ? fs.readFileSync(publicKeyPath, 'utf8') : '');
 
   return { privateKey, publicKey };
 }

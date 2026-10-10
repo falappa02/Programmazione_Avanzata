@@ -5,6 +5,7 @@
 | Sezione | Contenuto |
 | :--- | :--- |
 | [Obiettivo del Progetto](#obiettivo-del-progetto) | Scopo del backend e funzionalità principali |
+| [Diagramma dei Casi d'Uso](#diagramma-dei-casi-duso) | Attori del sistema e interazioni principali |
 | [Rotte Disponibili](#rotte-disponibili) | Panoramica completa degli endpoint REST |
 | ↳ [Autenticazione](#autenticazione) | Registrazione e login con JWT RS256 |
 | ↳ [Utenti & Amministrazione](#utenti--amministrazione) | Visualizzazione e ricarica crediti (RBAC) |
@@ -26,12 +27,20 @@ Il progetto implementa un backend RESTful ingegnerizzato in **TypeScript / Expre
 Gli utenti autenticati possono gestire dataset multimediali (immagini fisse e sequenze video MP4), caricare contenuti e richiedere l'elaborazione di inferenza. Per evitare il blocco del server HTTP dovuto al carico computazionale della computer vision, l'esecuzione dei modelli è demandata a una **coda asincrona Bull su Redis**. I consumi e l'accesso alle risorse sono regolati da un'economia a token gestita mediante pattern architetturali.
 
 Le operazioni principali sono:
-* **Autenticazione e autorizzazione asimmetrica**: rilascio e verifica di token JWT firmati con algoritmo crittografico **RS256** (coppia di chiavi RSA a 2048 bit).
+* **Autenticazione e autorizzazione asimmetrica**: rilascio e verifica di token JWT firmati con algoritmo crittografico **RS256** (coppia di chiavi RSA a 2048 bit). Nel caso di token esauriti (`tokens <= 0`), ogni richiesta autenticata viene rifiutata con `401 Unauthorized`.
 * **Controllo degli accessi basato sui ruoli (RBAC)**: distinzione tra utenti standard e amministratori (`admin` e `user`).
-* **Gestione Dataset**: organizzazione dei contenuti in collezioni logiche con supporto a tag e cancellazione logica (*Soft-Delete*).
-* **Upload multimediale con Strategy Pattern**: calcolo polimorfico dei costi in crediti per immagini e video MP4 multiframe.
-* **Pipeline di Inferenza asincrona non-bloccante**: accodamento immediato con HTTP `202 Accepted`, elaborazione FIFO tramite worker dedicato e polling dello stato.
-* **Ispezione visuale Side-by-Side**: generazione e streaming di immagini composite PNG che affiancano il frame originale a quello annotato con i Bounding Box di YOLO.
+* **Gestione Dataset**: organizzazione dei contenuti in collezioni logiche con verifica di non sovrapposizione dei nomi per lo stesso utente, deduplicazione tag tramite `Set<string>` e cancellazione logica (*Soft-Delete*).
+* **Upload multimediale con Strategy Pattern**: calcolo polimorfico dei costi in crediti per immagini (`0.25 token`) e video MP4 (`0.08 token/KB`).
+* **Pipeline di Inferenza asincrona non-bloccante**: controllo preventivo del credito (`4 token/immagine`, `1.75 token/frame`), accodamento immediato con HTTP `202 Accepted`, elaborazione FIFO tramite worker dedicato e polling dello stato (`PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `ABORTED`).
+* **Ispezione visuale Side-by-Side**: generazione e streaming di immagini composite PNG che affiancano il frame originale (a sinistra) a quello annotato con i Bounding Box e le classi di YOLO (a destra).
+
+---
+
+## Diagramma dei Casi d'Uso
+
+Il diagramma mostra i tre attori del sistema e le operazioni che ciascuno può compiere. L'**Amministratore (`admin`)** eredita tutti i casi d'uso dell'**Utente autenticato (`user`)** e ha accesso esclusivo all'operazione di ricarica del credito token tramite email.
+
+![Diagramma dei Casi d'Uso](docs/images/use_case_diagram.svg)
 
 ---
 
@@ -233,7 +242,7 @@ Restituisce le informazioni relative ai crediti token ancora a disposizione dell
 
 #### POST /api/v1/admin/recharge
 
-Aggiunge un importo arbitrario di token all'account di un utente identificato dalla sua email. Questa operazione è protetta dalla catena di middleware RBAC (`authMiddleware` $\rightarrow$ `requireRole('admin')` $\rightarrow$ `validate(rechargeSchema)`).
+Imposta il nuovo credito di token per l'account di un utente identificato dalla sua email. Questa operazione è protetta dalla catena di middleware RBAC (`authMiddleware` $\rightarrow$ `requireRole('admin')` $\rightarrow$ `validate(rechargeSchema)`).
 
 **Body richiesta:**
 ```json
@@ -249,7 +258,7 @@ Aggiunge un importo arbitrario di token all'account di un utente identificato da
 - `BadRequestError` — Credito specificato non valido (deve essere un numero positivo)
 - `NotFoundError` — Utente destinatario non trovato
 
-**Successo:** `200 OK` — Ritorna `{ email, previousTokens, newTokens }`
+**Successo:** `200 OK` — Ritorna `{ userId, email, newTokensBalance }`
 
 ```mermaid
 sequenceDiagram
@@ -305,15 +314,15 @@ sequenceDiagram
         Controller-->>Client: HTTP 404 Not Found
     end
 
-    Note over Service,DB: Aggiornamento saldo token
-    Service->>UserMod: user.tokens += credit, user.save()
+    Note over Service,DB: Aggiornamento saldo token con il nuovo credito
+    Service->>UserMod: user.tokens = credit, user.save()
     activate UserMod
     UserMod->>DB: UPDATE users SET tokens = ? WHERE id = ?
     DB-->>UserMod: ok
     UserMod-->>Service: user
     deactivate UserMod
 
-    Service-->>Controller: { email, previousTokens, newTokens }
+    Service-->>Controller: { userId, email, newTokensBalance }
     deactivate Service
 
     Controller-->>Client: HTTP 200 OK { success: true, message: "Ricarica effettuata", data: {...} }
@@ -696,10 +705,10 @@ sequenceDiagram
 **Strategy** — definisce una famiglia di algoritmi intercambiabili per il calcolo dei costi in crediti dei file multimediali ([`src/strategies/cost.strategy.ts`](src/strategies/cost.strategy.ts)), incapsulati dietro l'interfaccia `ICostStrategy`.  
 *Perché:* il costo di upload e di inferenza differisce radicalmente tra immagini statiche (`ImageCostStrategy`) e video MP4 multiframe (`VideoCostStrategy`). Lo Strategy Pattern permette di estendere il sistema (es. aggiungendo stream audio o nuvole di punti 3D) nel rispetto dell'*Open/Closed Principle*, senza modificare i controller o i servizi esistenti.
 
-**Factory Method** — centralizza e disaccoppia la creazione delle strategie di costo concrete ([`CostStrategyFactory`](src/strategies/cost.strategy.ts#L36)).  
-*Perché:* elimina i blocchi condizionali sparsi nel codice applicativo: quando `ContentService` o `InferenceService` devono determinare il costo di un elemento, interrogano semplicemente la Factory passando il tipo di media (`image` o `video`), ottenendo l'istanza corretta senza conoscerne i dettagli costruttivi.
+**Factory Method** — centralizza e disaccoppia la creazione delle strategie di costo ([`CostStrategyFactory`](src/strategies/cost.strategy.ts#L36)) e la generazione tipizzata delle eccezioni applicative ([`ErrorFactory`](src/errors/ErrorFactory.ts)).  
+*Perché:* elimina i blocchi condizionali e le istanziazioni dirette (`new ...Error()`) sparse nei vari layer del software: quando i servizi devono determinare il costo di un media o sollevare un errore di dominio (`400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `404 Not Found`), interrogano le rispettive Factory ottenendo un oggetto consistente e conforme all'*Open/Closed Principle*.
 
-**Chain of Responsibility** — filtra e valida ogni richiesta HTTP in arrivo attraverso una pipeline di middleware Express componibili: autenticazione asimmetrica JWT (`authMiddleware`) $\rightarrow$ controllo ruoli RBAC (`roleMiddleware`) $\rightarrow$ validazione schemi Zod (`validationMiddleware`) $\rightarrow$ logica di business nei controller $\rightarrow$ gestione errori centralizzata (`errorMiddleware`).  
+**Chain of Responsibility** — filtra e valida ogni richiesta HTTP in arrivo attraverso una pipeline di middleware Express componibili: autenticazione asimmetrica JWT e verifica credito residuo (`authMiddleware`) $\rightarrow$ controllo ruoli RBAC (`roleMiddleware`) $\rightarrow$ validazione schemi Zod (`validationMiddleware`) $\rightarrow$ logica di business nei controller $\rightarrow$ gestione errori centralizzata (`errorMiddleware`).  
 *Perché:* ogni middleware possiede un'unica responsabilità e interrompe immediatamente la catena in caso di errore; i controller restano compatti, concentrati esclusivamente sulla logica di dominio e svincolati dai dettagli di autenticazione e validazione dei parametri.
 
 **Message Queue & Worker (Asynchronous Processing)** — serializza i compiti computazionalmente onerosi di deep learning interponendo una coda Redis con **Bull** tra il server HTTP e lo script Python di YOLO ([`src/queue/inference.worker.ts`](src/queue/inference.worker.ts)).  
@@ -721,7 +730,7 @@ docker compose up --build
 
 Il servizio è disponibile su **`http://localhost:3000`**.
 
-Per popolare il database con utenti di test, dataset di esempio, immagini e video MP4 predefiniti:
+Per popolare il database con utenti di test (`admin@univpm.it`, `user1@univpm.it`, `user2@univpm.it`) e **3 dataset diversi** comprensivi di immagini e video MP4 per la demo:
 ```bash
 docker compose exec app npm run seed
 ```
@@ -730,28 +739,32 @@ docker compose exec app npm run seed
 
 ## Testing
 
-Il progetto adotta una strategia di testing multilivello:
+Il progetto adotta una strategia di testing multilivello conforme alle specifiche:
 
-### 1. Suite di Test Automatizzati Postman
+### 1. Test Automatizzati dei Middleware con Jest
+```bash
+docker compose exec app npm test
+# oppure in locale: npm test
+```
+Sono presenti suite di test unitari dedicate in `tests/`:
+- [**`tests/middlewares/auth.middleware.test.ts`**](tests/middlewares/auth.middleware.test.ts): verifica il middleware di autenticazione JWT RS256 (rifiuto se header assente, passaggio con token valido, e rifiuto con `401 Unauthorized` quando il credito dell'utente è esaurito `tokens <= 0`).
+- [**`tests/middlewares/error.middleware.test.ts`**](tests/middlewares/error.middleware.test.ts): verifica il middleware di gestione centralizzata degli errori (`errorHandlerMiddleware`), controllando la corretta mappatura di `InsufficientCreditError` (400) e delle eccezioni generiche (500).
+- [**`tests/errors/error.factory.test.ts`**](tests/errors/error.factory.test.ts) & [**`tests/services/inference.models.test.ts`**](tests/services/inference.models.test.ts): verificano `ErrorFactory` e la validazione dei modelli YOLO supportati.
+
+### 2. Suite di Test Automatizzati Postman
 Importare la collezione [**`postman/YOLO_Inference_API.postman_collection.json`**](postman/YOLO_Inference_API.postman_collection.json) in Postman.
 - **Chaining Automatico delle Variabili**: gli script nel tab *Tests* estraggono e memorizzano automaticamente `jwt_token`, `admin_jwt_token`, `dataset_id`, `content_id` e `processing_id`.
 - **Asserzioni di Contratto**: ogni richiesta verifica lo status code atteso, la conformità dello schema JSON e i tempi di risposta (SLA < 800ms).
 - **Negative Testing**: cartella dedicata per verificare il corretto rifiuto con `401 Unauthorized`, `403 Forbidden` e `400 Bad Request`.
 - **Collection Runner**: supporta l'esecuzione completa end-to-end con un solo clic.
 
-### 2. Test di Concorrenza Bull (`npm run test:concurrency`)
+### 3. Test di Concorrenza Bull (`npm run test:concurrency`)
 Verifica il comportamento del sistema quando riceve carichi simultanei:
 ```bash
 docker compose exec app npm run test:concurrency
 # oppure in locale: npm run test:concurrency
 ```
 Lo script invia **5 richieste simultanee** di inferenza con `Promise.all`: dimostra che tutte ricevono risposta immediata `202 Accepted` (< 50ms) e mostra il monitoraggio in tempo reale della coda FIFO (1 task in `RUNNING`, 4 in `PENDING`).
-
-### 3. Test Unitari e di Integrazione Jest
-```bash
-docker compose exec app npm test
-```
-Verifica la corretta gestione dei middleware di autenticazione e di formattazione delle eccezioni HTTP.
 
 ---
 
