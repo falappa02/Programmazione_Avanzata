@@ -8,25 +8,35 @@ export class DatasetService {
    * Utilizza la struttura dati Set<string> per eliminare eventuali tag duplicati.
    */
   public async createDataset(userId: string, name: string, tags: string[] = []) {
+    const cleanName = name.trim();
+    if (!cleanName) {
+      throw ErrorFactory.badRequest('Il nome del dataset non può essere vuoto.');
+    }
+
+    const cleanedTags = tags.map((t) => t.trim());
+    if (cleanedTags.length === 0 || cleanedTags.some((t) => t.length === 0)) {
+      throw ErrorFactory.badRequest('I tag non possono essere vuoti ed è necessario specificarne almeno uno.');
+    }
+
     // Verifica che non esista già un dataset attivo con lo stesso nome per l'utente
     const existing = await Dataset.findOne({
       where: {
         userId,
-        name,
+        name: cleanName,
         isDeleted: false,
       },
     });
 
     if (existing) {
-      throw ErrorFactory.badRequest(`Un dataset denominato '${name}' esiste già per questo utente.`);
+      throw ErrorFactory.badRequest(`Un dataset denominato '${cleanName}' esiste già per questo utente.`);
     }
 
     // Utilizzo di Set<string> per garantire l'unicità dei tag (domanda orale su Set)
-    const uniqueTags = Array.from(new Set<string>(tags));
+    const uniqueTags = Array.from(new Set<string>(cleanedTags));
 
     const dataset = await Dataset.create({
       userId,
-      name,
+      name: cleanName,
       tags: uniqueTags,
       isDeleted: false,
     });
@@ -68,26 +78,37 @@ export class DatasetService {
       throw ErrorFactory.notFound('Dataset', datasetId);
     }
 
-    if (name && name !== dataset.name) {
-      const existing = await Dataset.findOne({
-        where: {
-          userId,
-          name,
-          isDeleted: false,
-          id: { [Op.ne]: datasetId },
-        },
-      });
-
-      if (existing) {
-        throw ErrorFactory.badRequest(`Un altro dataset attivo dell'utente ha già il nome '${name}'.`);
+    if (name !== undefined) {
+      const cleanName = name.trim();
+      if (!cleanName) {
+        throw ErrorFactory.badRequest('Il nome del dataset non può essere vuoto.');
       }
 
-      dataset.name = name;
+      if (cleanName !== dataset.name) {
+        const existing = await Dataset.findOne({
+          where: {
+            userId,
+            name: cleanName,
+            isDeleted: false,
+            id: { [Op.ne]: datasetId },
+          },
+        });
+
+        if (existing) {
+          throw ErrorFactory.badRequest(`Un altro dataset attivo dell'utente ha già il nome '${cleanName}'.`);
+        }
+
+        dataset.name = cleanName;
+      }
     }
 
     if (tags !== undefined) {
+      const cleanedTags = tags.map((t) => t.trim());
+      if (cleanedTags.length === 0 || cleanedTags.some((t) => t.length === 0)) {
+        throw ErrorFactory.badRequest('I tag non possono essere vuoti ed è necessario specificarne almeno uno.');
+      }
       // Garantisce unicità dei tag tramite Set<string>
-      dataset.tags = Array.from(new Set<string>(tags));
+      dataset.tags = Array.from(new Set<string>(cleanedTags));
     }
 
     await dataset.save();

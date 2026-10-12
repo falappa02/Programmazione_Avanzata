@@ -8,10 +8,17 @@ import { z } from 'zod';
 
 const router = Router();
 
+const tagItemSchema = z
+  .string()
+  .trim()
+  .min(1, 'I tag non possono essere vuoti o composti da soli spazi');
+
 const createDatasetSchema = z.object({
   body: z.object({
-    name: z.string().min(1, 'Il nome del dataset è obbligatorio'),
-    tags: z.array(z.string()).optional(),
+    name: z.string().trim().min(1, 'Il nome del dataset è obbligatorio'),
+    tags: z
+      .array(tagItemSchema, { required_error: 'La lista dei tag è obbligatoria' })
+      .min(1, 'È necessario fornire almeno un tag per il dataset'),
   }),
 });
 
@@ -20,8 +27,11 @@ const updateDatasetSchema = z.object({
     id: z.string().uuid('ID dataset non valido'),
   }),
   body: z.object({
-    name: z.string().min(1).optional(),
-    tags: z.array(z.string()).optional(),
+    name: z.string().trim().min(1, 'Il nome del dataset non può essere vuoto').optional(),
+    tags: z
+      .array(tagItemSchema)
+      .min(1, 'La lista dei tag deve contenere almeno un tag valido')
+      .optional(),
   }),
 });
 
