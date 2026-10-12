@@ -4,6 +4,7 @@ import { NotFoundError } from './NotFoundError';
 import { InsufficientCreditError } from './InsufficientCreditError';
 import { UnauthorizedError } from './UnauthorizedError';
 import { ForbiddenError } from './ForbiddenError';
+import { HttpStatus } from '../enums';
 
 /**
  * Design Pattern: Factory Method (ErrorFactory)
@@ -56,6 +57,6 @@ export class ErrorFactory {
    * Crea un'eccezione generica 500 Internal Server Error
    */
   public static internal(message: string = 'Errore interno del server.', details: unknown = null): AppError {
-    return new AppError(message, 500, details);
+    return new AppError(message, HttpStatus.INTERNAL_SERVER_ERROR, details);
   }
 }
