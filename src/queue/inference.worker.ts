@@ -9,12 +9,6 @@ import { IInferenceResult } from '../types';
 /**
  * Bull Queue Worker (Pattern Observer / Job Queue)
  * Elabora i task di inferenza Machine Learning (YOLO) in modo completamente asincrono.
- * 
- * Perché è asincrono? (Domanda d'esame):
- * L'elaborazione di immagini e video è un'operazione pesante (CPU/GPU-bound).
- * Se venisse eseguita nella rotta HTTP, bloccherebbe l'Event Loop di Node.js.
- * Utilizzando una coda Redis con worker in background, l'API risponde subito (202 PENDING)
- * e il worker processa il lavoro in parallelo senza rallentare il server.
  */
 inferenceQueue.process(async (job) => {
   const { processingId, datasetId, modelId } = job.data;

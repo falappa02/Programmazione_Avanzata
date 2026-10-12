@@ -42,7 +42,7 @@ export class AuthService {
   /**
    * Autenticazione (Login) dell'utente:
    * - Ricerca dell'utente tramite email.
-   * - Confronto sicuro della password tramite bcrypt.compare (immune da timing attacks).
+   * - Confronto sicuro della password tramite bcrypt.compare.
    * - Rilascio del token JWT firmato con chiave privata RSA.
    */
   public async login(email: string, password: string) {
