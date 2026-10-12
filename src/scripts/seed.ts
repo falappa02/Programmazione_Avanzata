@@ -4,9 +4,11 @@ import fs from 'fs';
 import { sequelize } from '../config/database';
 import { User, Dataset, Content } from '../models';
 
-async function seed() {
+export async function runSeed(forceSync = true) {
   console.log('[SEED] Initializing Database Seed...');
-  await sequelize.sync({ force: true });
+  if (forceSync) {
+    await sequelize.sync({ force: true });
+  }
 
   const hashedAdminPassword = await bcrypt.hash('Admin123!', 10);
   const hashedUserPassword = await bcrypt.hash('User123!', 10);
@@ -144,10 +146,13 @@ async function seed() {
 
   console.log('[SEED] Created 3 Datasets and sample content items (including MP4 video) successfully.');
   console.log('[SEED] Database seeding complete!');
-  process.exit(0);
 }
 
-seed().catch((err) => {
-  console.error('[SEED ERROR]', err);
-  process.exit(1);
-});
+if (require.main === module) {
+  runSeed(true)
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error('[SEED ERROR]', err);
+      process.exit(1);
+    });
+}

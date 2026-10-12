@@ -2,6 +2,8 @@ import app from './app';
 import { config } from './config/env';
 import { sequelize } from './config/database';
 import { getRsaKeys } from './config/keys';
+import { User } from './models';
+import { runSeed } from './scripts/seed';
 import './queue/inference.worker'; // Importa e registra il worker asincrono di Bull Queue
 
 /**
@@ -38,7 +40,14 @@ async function bootstrap() {
     // 2. Connessione e sincronizzazione del Database con retry
     await connectWithRetry();
 
-    // 3. Avvio del server HTTP Express in ascolto sulla porta configurata
+    // 3. Auto-seeding iniziale se il database è appena stato creato ed è vuoto
+    const userCount = await User.count();
+    if (userCount === 0) {
+      console.log('[SEED] Database vuoto rilevato al primo avvio: popolamento automatico dei dati di demo...');
+      await runSeed(false);
+    }
+
+    // 4. Avvio del server HTTP Express in ascolto sulla porta configurata
     const server = app.listen(config.port, () => {
       console.log(`=======================================================`);
       console.log(` Server in ascolto su: http://localhost:${config.port}`);

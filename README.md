@@ -721,16 +721,27 @@ sequenceDiagram
 
 ## Avvio del Servizio
 
-Requisiti: **Docker** e **Docker Compose** installati sulla macchina.
+Requisiti: **Docker** e **Docker Compose** installati sulla macchina (non è necessario avere Node.js, `npm` o Python installati localmente).
 
 ```bash
-# Avvio di tutti i servizi (PostgreSQL, Redis e App Node+Python)
+# 1. (Opzionale) Creare il file .env a partire dal template
+cp .env.example .env
+
+# 2. Avvio di tutti i servizi (PostgreSQL, Redis e App Node+Python)
 docker compose up --build
 ```
 
-Il servizio è disponibile su **`http://localhost:3000`**.
+Il servizio è subito disponibile su **`http://localhost:3000`**.
 
-Per popolare il database con utenti di test (`admin@univpm.it`, `user1@univpm.it`, `user2@univpm.it`) e **3 dataset diversi** comprensivi di immagini e video MP4 per la demo:
+> **Nota sull'inizializzazione automatica**: Al primo avvio, il container genera automaticamente la coppia di chiavi asimmetriche RSA-2048 (se non presenti), sincronizza le tabelle su PostgreSQL ed **esegue in automatico il seed iniziale** se rileva il database vuoto, creando **3 dataset diversi** (con immagini e video MP4) e i seguenti utenti di test:
+>
+> | Ruolo | Email | Password | Credito Iniziale |
+> | :--- | :--- | :--- | :--- |
+> | **Admin** | `admin@univpm.it` | `Admin123!` | `2000.0` token |
+> | **User 1** | `user1@univpm.it` | `User123!` | `500.0` token |
+> | **User 2** | `user2@univpm.it` | `User123!` | `25.0` token |
+
+Qualora si desideri **resettare e ripopolare da zero** il database in qualsiasi momento (a container avviati):
 ```bash
 docker compose exec app npm run seed
 ```
@@ -739,12 +750,11 @@ docker compose exec app npm run seed
 
 ## Testing
 
-Il progetto adotta una strategia di testing multilivello conforme alle specifiche:
+Tutti i comandi di test possono essere eseguiti direttamente dentro il container Docker (senza bisogno di avere `npm` installato sul proprio PC):
 
 ### 1. Test Automatizzati dei Middleware con Jest
 ```bash
 docker compose exec app npm test
-# oppure in locale: npm test
 ```
 Sono presenti suite di test unitari dedicate in `tests/`:
 - [**`tests/middlewares/auth.middleware.test.ts`**](tests/middlewares/auth.middleware.test.ts): verifica il middleware di autenticazione JWT RS256 (rifiuto se header assente, passaggio con token valido, e rifiuto con `401 Unauthorized` quando il credito dell'utente è esaurito `tokens <= 0`).
@@ -758,11 +768,10 @@ Importare la collezione [**`postman/YOLO_Inference_API.postman_collection.json`*
 - **Negative Testing**: cartella dedicata per verificare il corretto rifiuto con `401 Unauthorized`, `403 Forbidden` e `400 Bad Request`.
 - **Collection Runner**: supporta l'esecuzione completa end-to-end con un solo clic.
 
-### 3. Test di Concorrenza Bull (`npm run test:concurrency`)
+### 3. Test di Concorrenza Bull
 Verifica il comportamento del sistema quando riceve carichi simultanei:
 ```bash
 docker compose exec app npm run test:concurrency
-# oppure in locale: npm run test:concurrency
 ```
 Lo script invia **5 richieste simultanee** di inferenza con `Promise.all`: dimostra che tutte ricevono risposta immediata `202 Accepted` (< 50ms) e mostra il monitoraggio in tempo reale della coda FIFO (1 task in `RUNNING`, 4 in `PENDING`).
 
