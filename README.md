@@ -5,6 +5,7 @@
 | Sezione | Contenuto |
 | :--- | :--- |
 | [Obiettivo del Progetto](#obiettivo-del-progetto) | Scopo del backend e funzionalità principali |
+| [Avvio del Servizio](#avvio-del-servizio) | Esecuzione multi-container con Docker Compose |
 | [Diagramma dei Casi d'Uso](#diagramma-dei-casi-duso) | Attori del sistema e interazioni principali |
 | [Rotte Disponibili](#rotte-disponibili) | Panoramica completa degli endpoint REST |
 | ↳ [Autenticazione](#autenticazione) | Registrazione e login con JWT RS256 |
@@ -13,7 +14,6 @@
 | ↳ [Contenuti Multimediali](#contenuti-multimediali) | Upload immagini/video e Strategy Pattern |
 | ↳ [Inferenza YOLO](#inferenza-yolo) | Coda asincrona Bull, status e visualizzazione frame |
 | [Design Pattern Implementati](#design-pattern-implementati) | Pattern architetturali con relative motivazioni (*Perché*) |
-| [Avvio del Servizio](#avvio-del-servizio) | Esecuzione multi-container con Docker Compose |
 | [Testing](#testing) | Postman test suite, test di concorrenza Bull e Jest |
 | [Note](#note) | Software, librerie e tecnologie usate |
 | [Autore](#autore) | Riferimenti autore e GitHub |
@@ -33,6 +33,39 @@ Le operazioni principali sono:
 * **Upload multimediale con Strategy Pattern**: calcolo polimorfico dei costi in crediti per immagini (`0.25 token`) e video MP4 (`0.08 token/KB`).
 * **Pipeline di Inferenza asincrona non-bloccante**: controllo preventivo del credito (`4 token/immagine`, `1.75 token/frame`), accodamento immediato con HTTP `202 Accepted`, elaborazione FIFO tramite worker dedicato e polling dello stato (`PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `ABORTED`).
 * **Ispezione visuale Side-by-Side**: generazione e streaming di immagini composite PNG che affiancano il frame originale (a sinistra) a quello annotato con i Bounding Box e le classi di YOLO (a destra).
+
+---
+
+## Avvio del Servizio
+
+Requisiti: **Docker** e **Docker Compose** installati sulla macchina (non è necessario avere Node.js, `npm` o Python installati localmente).
+
+```bash
+# 1. Clonare il repository e posizionarsi nella cartella di progetto
+git clone https://github.com/falappa02/Programmazione_Avanzata.git
+cd Programmazione_Avanzata
+
+# 2. (Opzionale) Creare il file .env a partire dal template
+cp .env.example .env
+
+# 3. Avvio di tutti i servizi (PostgreSQL, Redis e App Node+Python)
+docker compose up --build
+```
+
+Il servizio è subito disponibile su **`http://localhost:3000`**.
+
+> **Nota sull'inizializzazione automatica**: Al primo avvio, il container genera automaticamente la coppia di chiavi asimmetriche RSA-2048 (se non presenti), sincronizza le tabelle su PostgreSQL ed **esegue in automatico il seed iniziale** se rileva il database vuoto, creando **3 dataset diversi** (con immagini e video MP4) e i seguenti utenti di test:
+>
+> | Ruolo | Email | Password | Credito Iniziale |
+> | :--- | :--- | :--- | :--- |
+> | **Admin** | `admin@univpm.it` | `Admin123!` | `2000.0` token |
+> | **User 1** | `user1@univpm.it` | `User123!` | `500.0` token |
+> | **User 2** | `user2@univpm.it` | `User123!` | `25.0` token |
+
+Qualora si desideri **resettare e ripopolare da zero** il database in qualsiasi momento (a container avviati):
+```bash
+docker compose exec app npm run seed
+```
 
 ---
 
@@ -716,39 +749,6 @@ sequenceDiagram
 
 **Enum Pattern (Type-Safe HTTP Codes)** — formalizza tutti i codici di risposta HTTP standard (`200 OK`, `201 Created`, `202 Accepted`, `400 Bad Request`, ecc.) all'interno dell'enum TypeScript `HttpStatus` ([`src/enums/httpStatus.ts`](src/enums/httpStatus.ts)).  
 *Perché:* elimina i "magic numbers" sparsi nei controller e nei middleware, prevenendo errori di battitura a tempo di compilazione e rendendo il codice espressivo e conforme agli standard ingegneristici.
-
----
-
-## Avvio del Servizio
-
-Requisiti: **Docker** e **Docker Compose** installati sulla macchina (non è necessario avere Node.js, `npm` o Python installati localmente).
-
-```bash
-# 1. Clonare il repository e posizionarsi nella cartella di progetto
-git clone https://github.com/falappa02/Programmazione_Avanzata.git
-cd Programmazione_Avanzata
-
-# 2. (Opzionale) Creare il file .env a partire dal template
-cp .env.example .env
-
-# 3. Avvio di tutti i servizi (PostgreSQL, Redis e App Node+Python)
-docker compose up --build
-```
-
-Il servizio è subito disponibile su **`http://localhost:3000`**.
-
-> **Nota sull'inizializzazione automatica**: Al primo avvio, il container genera automaticamente la coppia di chiavi asimmetriche RSA-2048 (se non presenti), sincronizza le tabelle su PostgreSQL ed **esegue in automatico il seed iniziale** se rileva il database vuoto, creando **3 dataset diversi** (con immagini e video MP4) e i seguenti utenti di test:
->
-> | Ruolo | Email | Password | Credito Iniziale |
-> | :--- | :--- | :--- | :--- |
-> | **Admin** | `admin@univpm.it` | `Admin123!` | `2000.0` token |
-> | **User 1** | `user1@univpm.it` | `User123!` | `500.0` token |
-> | **User 2** | `user2@univpm.it` | `User123!` | `25.0` token |
-
-Qualora si desideri **resettare e ripopolare da zero** il database in qualsiasi momento (a container avviati):
-```bash
-docker compose exec app npm run seed
-```
 
 ---
 
