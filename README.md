@@ -724,10 +724,14 @@ sequenceDiagram
 Requisiti: **Docker** e **Docker Compose** installati sulla macchina (non è necessario avere Node.js, `npm` o Python installati localmente).
 
 ```bash
-# 1. (Opzionale) Creare il file .env a partire dal template
+# 1. Clonare il repository e posizionarsi nella cartella di progetto
+git clone https://github.com/falappa02/Programmazione_Avanzata.git
+cd Programmazione_Avanzata
+
+# 2. (Opzionale) Creare il file .env a partire dal template
 cp .env.example .env
 
-# 2. Avvio di tutti i servizi (PostgreSQL, Redis e App Node+Python)
+# 3. Avvio di tutti i servizi (PostgreSQL, Redis e App Node+Python)
 docker compose up --build
 ```
 
